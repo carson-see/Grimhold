@@ -1,28 +1,17 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
-import { Frame } from '../components/Frame';
-import { CellBackdrop } from '../components/CellBackdrop';
-import { BottomCTA } from '../components/BottomCTA';
+import { TransitionScene } from '../components/TransitionScene';
 import { MiraReaching } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 
 // Scene 01 — "After the First Wisp"  (only fires after Level 1)
-// Mira reaches up, falls six inches short; a folded paper appears under
-// the door; she does not pick it up. ~5–6 seconds.
+// Mira reaches up, falls six inches short; a folded paper slides in under
+// the door; she does not pick it up.
 
 export function Scene01() {
   const setScreen = useGame((s) => s.setScreen);
   const finishLevel = useGame((s) => s.finishLevel);
+  const highestLevelCleared = useGame((s) => s.highestLevelCleared);
   const reduce = useReducedMotion();
-  const [canAdvance, setCanAdvance] = useState(false);
-  const timer = useRef<number | undefined>(undefined);
-
-  useEffect(() => {
-    timer.current = window.setTimeout(() => setCanAdvance(true), reduce ? 1000 : 4200);
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [reduce]);
 
   const advance = () => {
     finishLevel();
@@ -30,9 +19,12 @@ export function Scene01() {
   };
 
   return (
-    <Frame>
-      <CellBackdrop opacity={0.9} />
-
+    <TransitionScene
+      ctaMs={4200}
+      ctaLabel="Continue"
+      onAdvance={advance}
+      skippable={highestLevelCleared >= 1}
+    >
       <div className="relative z-10 flex flex-col h-[100dvh] items-center justify-end pb-24">
         <motion.div
           initial={reduce ? { y: 0, opacity: 0.92 } : { y: 24, opacity: 0 }}
@@ -68,20 +60,6 @@ export function Scene01() {
           </span>
         </motion.p>
       </div>
-
-      {canAdvance && (
-        <BottomCTA>
-          <motion.button
-            className="btn-descend w-full"
-            onClick={advance}
-            initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: reduce ? 0 : 0.8 }}
-          >
-            Continue
-          </motion.button>
-        </BottomCTA>
-      )}
-    </Frame>
+    </TransitionScene>
   );
 }

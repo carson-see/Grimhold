@@ -22,6 +22,19 @@ export interface EncounterState {
   deadline: number | null;  // epoch ms; null when closed
 }
 
+export interface MemoryVisionState {
+  open: boolean;
+  triggered: boolean;
+  dismissAt: number | null; // epoch ms
+}
+
+export interface ArchitectVoiceState {
+  open: boolean;
+  triggered: boolean;
+  fragmentIdx: number;      // which fragment is currently visible
+  dismissAt: number | null; // epoch ms when the whole voice moment ends
+}
+
 interface Store {
   // Meta / progression
   screen: Screen;
@@ -31,6 +44,7 @@ interface Store {
   highestLevelCleared: number;
   tutorialSeen: boolean;
   bessieAllyActive: boolean;    // set to true if Level 3 recruit succeeds
+  hasPocketedUnknown: boolean;  // L5 outcome — used in later acts
   coins: number;
   gems: number;
   lastResult: LevelResult | null;
@@ -42,7 +56,12 @@ interface Store {
   movesUsed: number;
   completed: boolean;
   completedPathId: RecipePathId | null;
+  failed: boolean;                    // e.g. L6 overheat — distinct from move-limit soft-fail
   encounter: EncounterState;
+  memoryVision: MemoryVisionState;
+  architectVoice: ArchitectVoiceState;
+  conditionalDelivered: boolean;      // L5: Smudge has brought the Unknown
+  timeSensitiveSatisfied: boolean;    // L6: C-Left has been filled at least once
 
   // Actions
   setScreen: (s: Screen) => void;
@@ -56,8 +75,19 @@ interface Store {
   placeInCauldron: (cauldron: CauldronId) => void;
   removeFromCauldron: (id: string) => void;
   resolveEncounter: (choice: EncounterChoiceId) => void;
+  dismissMemoryVision: () => void;
+  dismissArchitectVoice: () => void;
   finishLevel: () => LevelResult;
   advanceToNextLevel: () => void;
+}
+
+// Type for the dev-only window handle — the actual assignment lives in
+// `src/main.tsx` behind an `import.meta.env.DEV` guard so production builds
+// tree-shake it out. Do not call this from app code.
+declare global {
+  interface Window {
+    __GRIMHOLD__?: { store: typeof useGame };
+  }
 }
 
 // ── Recipe matching ────────────────────────────────────────────────────────
@@ -132,8 +162,13 @@ function isPrefixMultiset(placed: IngredientId[], required: IngredientId[]): boo
 }
 
 // ── Win detection ──────────────────────────────────────────────────────────
+// If a conditional ingredient (L5's Unknown) is configured, it's allowed to
+// stay on the tray — the level can complete without it. Every other
+// ingredient must be placed before win is evaluated.
 function firstMatchingRecipe(ingredients: Ingredient[], level: LevelConfig): RecipePath | null {
-  if (ingredients.some((i) => i.placedIn === null)) return null;
+  const cond = level.conditionalIngredient;
+  const allPlaced = ingredients.every((i) => i.placedIn !== null || i.kind === cond?.kind);
+  if (!allPlaced) return null;
   for (const recipe of level.recipes) if (recipeMatches(ingredients, level, recipe)) return recipe;
   return null;
 }
@@ -157,6 +192,12 @@ function computeStars(movesUsed: number, level: LevelConfig): 1 | 2 | 3 {
 function emptyEncounter(): EncounterState {
   return { open: false, triggered: false, choice: null, deadline: null };
 }
+function emptyMemoryVision(): MemoryVisionState {
+  return { open: false, triggered: false, dismissAt: null };
+}
+function emptyArchitectVoice(): ArchitectVoiceState {
+  return { open: false, triggered: false, fragmentIdx: 0, dismissAt: null };
+}
 
 // Encounter outcomes — pure, returns delta to apply to store.
 function resolveEncounterOutcome(choice: EncounterChoiceId, coins: number):
@@ -167,13 +208,38 @@ function resolveEncounterOutcome(choice: EncounterChoiceId, coins: number):
     case 'distract':
       return { coinsDelta: 0, movesDelta: 1, ally: false };
     case 'recruit': {
-      // 60% success per Level Document. Seeded by Date.now (per-session).
+      // 60% success per Level Document. Per-session Math.random — that's
+      // desired (no save-scumming via reload).
       const success = Math.random() < 0.6;
       return { coinsDelta: 0, movesDelta: 0, ally: success };
     }
     case 'silent':
       return { coinsDelta: 0, movesDelta: 0, ally: false };
   }
+}
+
+// Volatility — every `shiftEveryMoves` placements, nudge each placed
+// volatile ingredient one slot over (clamped at the right-most cauldron
+// so the shift feels like drift, not teleport). Time-sensitive cauldrons
+// are excluded from the shift so the L6 overheat warning can't be re-
+// triggered by a cauldron the player already satisfied.
+function applyVolatilityShift(
+  ingredients: Ingredient[],
+  level: LevelConfig,
+  nextMoves: number,
+): Ingredient[] {
+  const vol = level.volatility;
+  if (!vol || nextMoves === 0 || nextMoves % vol.shiftEveryMoves !== 0) return ingredients;
+  const order = level.cauldrons;
+  const tsCauldron = level.timeSensitive?.cauldron;
+  return ingredients.map((ing) => {
+    if (!vol.kinds.includes(ing.kind) || ing.placedIn === null) return ing;
+    const idx = order.indexOf(ing.placedIn);
+    if (idx < 0 || idx === order.length - 1) return ing; // clamp at the end
+    const next = order[idx + 1];
+    if (next === tsCauldron || ing.placedIn === tsCauldron) return ing;
+    return { ...ing, placedIn: next };
+  });
 }
 
 export const useGame = create<Store>()(
@@ -187,6 +253,7 @@ export const useGame = create<Store>()(
       highestLevelCleared: 0,
       tutorialSeen: false,
       bessieAllyActive: false,
+      hasPocketedUnknown: false,
       coins: 0,
       gems: 0,
       lastResult: null,
@@ -198,7 +265,12 @@ export const useGame = create<Store>()(
       movesUsed: 0,
       completed: false,
       completedPathId: null,
+      failed: false,
       encounter: emptyEncounter(),
+      memoryVision: emptyMemoryVision(),
+      architectVoice: emptyArchitectVoice(),
+      conditionalDelivered: false,
+      timeSensitiveSatisfied: false,
 
       setScreen: (s) => set({ screen: s }),
       pickCharacter: (c) => set({ character: c }),
@@ -215,7 +287,12 @@ export const useGame = create<Store>()(
           movesUsed: 0,
           completed: false,
           completedPathId: null,
+          failed: false,
           encounter: emptyEncounter(),
+          memoryVision: emptyMemoryVision(),
+          architectVoice: emptyArchitectVoice(),
+          conditionalDelivered: false,
+      timeSensitiveSatisfied: false,
           lastResult: null,
         });
       },
@@ -228,7 +305,12 @@ export const useGame = create<Store>()(
           movesUsed: 0,
           completed: false,
           completedPathId: null,
+          failed: false,
           encounter: emptyEncounter(),
+          memoryVision: emptyMemoryVision(),
+          architectVoice: emptyArchitectVoice(),
+          conditionalDelivered: false,
+      timeSensitiveSatisfied: false,
           lastResult: null,
         });
       },
@@ -238,49 +320,79 @@ export const useGame = create<Store>()(
           set({ selectedIngredientId: null });
           return;
         }
-        // Block selection while an encounter modal is open — the puzzle
-        // should be visibly paused.
-        if (get().encounter.open) return;
+        // Block selection during blocking overlays (encounter or memory).
+        // Architect voice is intentionally non-blocking — player keeps
+        // sorting while the fragments play.
+        const { encounter, memoryVision } = get();
+        if (encounter.open || memoryVision.open) return;
         const ing = get().ingredients.find((i) => i.id === id);
         if (!ing || ing.placedIn !== null) return;
         set({ selectedIngredientId: id });
       },
 
       placeInCauldron: (cauldron) => {
-        const { selectedIngredientId, ingredients, movesUsed, level, completed, encounter } = get();
-        if (completed || !selectedIngredientId) return;
-        if (encounter.open) return;
+        const s = get();
+        const { selectedIngredientId, ingredients, movesUsed, level, completed, failed, encounter, memoryVision, timeSensitiveSatisfied } = s;
+        if (completed || failed || !selectedIngredientId) return;
+        if (encounter.open || memoryVision.open) return;
         if (movesUsed >= level.moveLimit) return;
-        const next = ingredients.map((i) =>
+
+        const nextMoves = movesUsed + 1;
+
+        // 1. Drift existing placements BEFORE the new placement lands —
+        //    otherwise a Darkspore placed on move 5 would rotate out of
+        //    its intended slot on the same move.
+        let next = applyVolatilityShift(ingredients, level, nextMoves);
+        // 2. Apply the new placement.
+        next = next.map((i) =>
           i.id === selectedIngredientId ? { ...i, placedIn: cauldron } : i,
         );
-        const nextMoves = movesUsed + 1;
+
+        // Side triggers — each fires at most once per level.
+        const overlays = computeOverlays(s, level, nextMoves);
+        const justDelivered = overlays.conditionalDelivered && level.conditionalIngredient;
+        if (justDelivered) {
+          const kind = level.conditionalIngredient!.kind;
+          next = [...next, { id: `${kind}-delivered`, kind, placedIn: null }];
+        }
+
         const match = firstMatchingRecipe(next, level);
 
-        // Encounter check — fires at triggerMove unless already fired/completed.
-        const enc = level.encounter;
-        const shouldFire =
-          !!enc &&
-          !encounter.triggered &&
-          nextMoves >= enc.triggerMove &&
-          !match;
+        // Time-sensitive cauldron — tracked as "has it ever been filled
+        // by the deadline?" Once satisfied, the check stays satisfied
+        // (volatility can't un-satisfy an already-filled slot).
+        const ts = level.timeSensitive;
+        const nowSatisfied =
+          timeSensitiveSatisfied ||
+          (!!ts && next.some((i) => i.placedIn === ts.cauldron));
+        const overheated =
+          !!ts && !nowSatisfied && nextMoves >= ts.fillByMove && match === null;
 
         set({
           ingredients: next,
           selectedIngredientId: null,
           movesUsed: nextMoves,
+          // A successful match always wins, even if the overheat check
+          // would otherwise fire on the same move. The doc says an
+          // overflow costs a life — not the level.
           completed: match !== null,
           completedPathId: match?.id ?? null,
-          encounter: shouldFire && enc
-            ? { open: true, triggered: true, choice: null, deadline: Date.now() + enc.decisionSeconds * 1000 }
-            : encounter,
+          failed: overheated,
+          timeSensitiveSatisfied: nowSatisfied,
+          // Suppress overlay opens if the move also completed the level.
+          encounter: match ? encounter : (overlays.encounter ?? encounter),
+          memoryVision: match ? memoryVision : (overlays.memoryVision ?? memoryVision),
+          architectVoice: match ? s.architectVoice : (overlays.architectVoice ?? s.architectVoice),
+          conditionalDelivered: overlays.conditionalDelivered ?? s.conditionalDelivered,
         });
       },
 
       removeFromCauldron: (id) => {
-        const { ingredients, movesUsed, level, completed, encounter } = get();
-        if (completed || movesUsed >= level.moveLimit) return;
-        if (encounter.open) return;
+        const { ingredients, movesUsed, level, completed, failed, encounter, memoryVision } = get();
+        if (completed || failed || movesUsed >= level.moveLimit) return;
+        if (encounter.open || memoryVision.open) return;
+        const target = ingredients.find((i) => i.id === id);
+        if (!target || target.placedIn === null) return; // no-op on unplaced
         const next = ingredients.map((i) =>
           i.id === id ? { ...i, placedIn: null } : i,
         );
@@ -303,12 +415,36 @@ export const useGame = create<Store>()(
         });
       },
 
+      dismissMemoryVision: () => {
+        const { memoryVision } = get();
+        if (!memoryVision.open) return;
+        set({ memoryVision: { ...memoryVision, open: false, dismissAt: null } });
+      },
+
+      dismissArchitectVoice: () => {
+        const { architectVoice } = get();
+        if (!architectVoice.open) return;
+        set({ architectVoice: { ...architectVoice, open: false, dismissAt: null } });
+      },
+
       finishLevel: () => {
-        const { movesUsed, level, completedPathId, coins, gems, highestLevelCleared, encounter } = get();
+        const { movesUsed, level, completedPathId, coins, gems, highestLevelCleared, encounter, lastResult, ingredients, conditionalDelivered } = get();
+        // Idempotent: React 18 StrictMode double-invokes setState initializers
+        // and effect callbacks in dev, and LevelComplete calls this from a
+        // useState initializer. Without this guard the user would double-bank
+        // coins + gems on every mount.
+        if (lastResult && lastResult.levelId === level.id) return lastResult;
         const path = level.recipes.find((r) => r.id === completedPathId) ?? level.recipes[0];
         const stars = computeStars(movesUsed, level);
         const earnedCoins = stars === 3 ? 1000 : stars === 2 ? 600 : 200;
         const earnedGems = level.id > highestLevelCleared ? 1 : 0; // first clear only
+        const cond = level.conditionalIngredient;
+        // Only counts as "pocketed" if the Unknown was actually delivered
+        // first — an early-finish player who never saw it shouldn't get
+        // credit for hiding it.
+        const pocketedUnknown =
+          !!cond && conditionalDelivered &&
+          ingredients.some((i) => i.kind === cond.kind && i.placedIn === null);
         const result: LevelResult = {
           levelId: level.id,
           stars,
@@ -318,12 +454,14 @@ export const useGame = create<Store>()(
           wispColor: path.wispColor,
           recipePathId: path.id,
           encounterChoice: encounter.choice ?? undefined,
+          pocketedUnknown: cond ? pocketedUnknown : undefined,
         };
         set({
           lastResult: result,
           coins: coins + earnedCoins,
           gems: gems + earnedGems,
           highestLevelCleared: Math.max(highestLevelCleared, level.id),
+          hasPocketedUnknown: pocketedUnknown || get().hasPocketedUnknown,
         });
         return result;
       },
@@ -335,14 +473,16 @@ export const useGame = create<Store>()(
           get().startLevel(nxt);
           set({ screen: 'level' });
         } else {
-          // End of built content → Larder stub.
           set({ screen: 'larder-stub' });
         }
       },
     }),
     {
       name: 'grimhold-save-v0',
-      version: 2, // bumped — schema gained multi-level progression
+      version: 3, // bumped — L4-L6 adds hasPocketedUnknown + new screens
+      // Any version < current → let the merge() below clean it up. Returning
+      // the raw persisted state here means merge() handles all validation.
+      migrate: (persisted) => persisted,
       partialize: (s) => ({
         character: s.character,
         name: s.name,
@@ -350,12 +490,10 @@ export const useGame = create<Store>()(
         highestLevelCleared: s.highestLevelCleared,
         tutorialSeen: s.tutorialSeen,
         bessieAllyActive: s.bessieAllyActive,
+        hasPocketedUnknown: s.hasPocketedUnknown,
         coins: s.coins,
         gems: s.gems,
       }),
-      // Anyone can hand-edit localStorage. Validate every persisted field on
-      // rehydrate so a corrupt value can't crash later code. Unknown fields
-      // fall back to the current (default) value.
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<{
           character: unknown;
@@ -365,12 +503,16 @@ export const useGame = create<Store>()(
           hasPlayedLevel1: unknown; // legacy v1 key
           tutorialSeen: unknown;
           bessieAllyActive: unknown;
+          hasPocketedUnknown: unknown;
           coins: unknown;
           gems: unknown;
         }>;
         const allowedClasses: CharacterClass[] = ['witch', 'rogue', 'scholar', 'knight'];
-        const coinsNum = typeof p.coins === 'number' ? p.coins : Number(p.coins);
-        const gemsNum = typeof p.gems === 'number' ? p.gems : Number(p.gems);
+        // Strict: `Number(null) === 0` would silently zero out a user's
+        // progress if the persisted field is null/undefined. Require the
+        // value to already be a finite number before accepting it.
+        const coinsNum = typeof p.coins === 'number' && Number.isFinite(p.coins) ? p.coins : null;
+        const gemsNum = typeof p.gems === 'number' && Number.isFinite(p.gems) ? p.gems : null;
         // v1 stored hasPlayedLevel1 as a boolean; migrate to tutorialSeen and
         // highestLevelCleared=1 so returning players don't re-see the tutorial.
         const v1Played = typeof p.hasPlayedLevel1 === 'boolean' && p.hasPlayedLevel1 === true;
@@ -388,10 +530,65 @@ export const useGame = create<Store>()(
             : v1Played ? 1 : current.highestLevelCleared,
           tutorialSeen: typeof p.tutorialSeen === 'boolean' ? p.tutorialSeen : v1Played || current.tutorialSeen,
           bessieAllyActive: typeof p.bessieAllyActive === 'boolean' ? p.bessieAllyActive : current.bessieAllyActive,
-          coins: Number.isFinite(coinsNum) ? Math.max(0, Math.min(9_999_999, Math.floor(coinsNum))) : current.coins,
-          gems: Number.isFinite(gemsNum) ? Math.max(0, Math.min(99_999, Math.floor(gemsNum))) : current.gems,
+          hasPocketedUnknown: typeof p.hasPocketedUnknown === 'boolean' ? p.hasPocketedUnknown : current.hasPocketedUnknown,
+          coins: coinsNum !== null ? Math.max(0, Math.min(9_999_999, Math.floor(coinsNum))) : current.coins,
+          gems: gemsNum !== null ? Math.max(0, Math.min(99_999, Math.floor(gemsNum))) : current.gems,
         };
       },
     },
   ),
 );
+
+// Mid-placement overlay triggers — returns only the overlays that should
+// open on this move. Caller spreads the result into `set`. The caller is
+// responsible for suppressing overlays when the move also won the level.
+function computeOverlays(
+  s: Pick<Store, 'encounter' | 'memoryVision' | 'architectVoice' | 'conditionalDelivered'>,
+  level: LevelConfig,
+  nextMoves: number,
+): {
+  encounter?: EncounterState;
+  memoryVision?: MemoryVisionState;
+  architectVoice?: ArchitectVoiceState;
+  conditionalDelivered?: boolean;
+} {
+  const out: ReturnType<typeof computeOverlays> = {};
+
+  const enc = level.encounter;
+  if (enc && !s.encounter.triggered && nextMoves >= enc.triggerMove) {
+    out.encounter = {
+      open: true,
+      triggered: true,
+      choice: null,
+      deadline: Date.now() + enc.decisionSeconds * 1000,
+    };
+  }
+
+  const mv = level.memoryVision;
+  if (mv && !s.memoryVision.triggered && nextMoves >= mv.triggerMove) {
+    out.memoryVision = {
+      open: true,
+      triggered: true,
+      dismissAt: Date.now() + mv.durationMs,
+    };
+  }
+
+  const av = level.architectVoice;
+  if (av && !s.architectVoice.triggered && nextMoves >= av.triggerMove) {
+    out.architectVoice = {
+      open: true,
+      triggered: true,
+      fragmentIdx: 0,
+      dismissAt: Date.now() + av.durationMs,
+    };
+  }
+
+  const cond = level.conditionalIngredient;
+  if (cond && !s.conditionalDelivered && nextMoves >= cond.deliverAtMove) {
+    // Flag flips here; the actual Unknown ingredient is appended to the
+    // ingredients array by the caller (placeInCauldron) on the same tick.
+    out.conditionalDelivered = true;
+  }
+
+  return out;
+}

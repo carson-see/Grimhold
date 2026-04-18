@@ -97,6 +97,7 @@ export function Scene00() {
           <button
             className="absolute top-3 right-3 w-11 h-11 inline-flex items-center justify-center text-on-surface-variant text-[11px] uppercase tracking-[0.2em] font-label border-[0.5px] border-outline/30 rounded-sm bg-surface-container/60 backdrop-blur-sm"
             onClick={advance}
+            aria-label="Skip opening scene"
           >
             Skip
           </button>

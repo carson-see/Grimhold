@@ -148,6 +148,72 @@ function Silvermoss({ className, size = 44, dim, noFilter }: Props) {
   );
 }
 
+// Hollowroot — introduced Level 6. Per Doc: "hollow grey; produces hollow
+// wisp effect." A drooping, hollowed-out tuber with a cavity in the center
+// and two pale tendrils. The emptiness is the point.
+function Hollowroot({ className, size = 44, dim, noFilter }: Props) {
+  const useFilter = !noFilter && size >= FILTER_SIZE_THRESHOLD;
+  return (
+    <InkSvg size={size} viewBox="0 0 64 64" className={className} style={{ opacity: dim ? 0.4 : 1 }}>
+      <g filter={useFilter ? 'url(#ink-grain)' : undefined}>
+        {/* halo — dim grey, no color */}
+        <ellipse cx="32" cy="34" rx="20" ry="16" fill="#948e99" opacity="0.18" />
+        {/* outer shell — lopsided, indented on one side */}
+        <path
+          d="M20 14 C 12 20, 10 34, 18 48 C 28 56, 44 54, 48 42 C 50 30, 44 18, 34 14 C 28 12, 24 12, 20 14 Z"
+          fill="#3a3a37"
+          stroke="#0e0e0c"
+          strokeWidth="0.8"
+        />
+        {/* inner cavity — the hollow */}
+        <ellipse cx="30" cy="34" rx="10" ry="11" fill="#0a0a09" />
+        <ellipse cx="30" cy="34" rx="8" ry="9" fill="#1a1a18" opacity="0.9" />
+        {/* rim highlight — where the edge catches the fungal glow */}
+        <path d="M22 26 C 22 22, 26 20, 30 20" stroke="#6b6670" strokeWidth="0.9" fill="none" strokeLinecap="round" />
+        {/* tendrils drooping from the bottom */}
+        <path d="M22 50 C 20 56, 20 60, 22 62" stroke="#5a5a55" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+        <path d="M36 52 C 38 58, 38 60, 36 62" stroke="#5a5a55" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+        {/* stem — a crooked cap */}
+        <path d="M28 12 L 26 8 L 32 6 L 30 10" stroke="#3a3a37" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+        {/* pale spot in the cavity — a suggestion of depth */}
+        <ellipse cx="28" cy="32" rx="1.2" ry="0.8" fill="#cbc4d0" opacity="0.35" />
+      </g>
+    </InkSvg>
+  );
+}
+
+// Unknown — introduced Level 5 by Smudge. A grey-silver shard with no clear
+// form — Mira's recognition fails, and the player's should too. Visually
+// unlike every other ingredient: angular instead of organic, faint
+// iridescence instead of colour.
+function Unknown({ className, size = 44, dim, noFilter }: Props) {
+  const useFilter = !noFilter && size >= FILTER_SIZE_THRESHOLD;
+  return (
+    <InkSvg size={size} viewBox="0 0 64 64" className={className} style={{ opacity: dim ? 0.4 : 1 }}>
+      <g filter={useFilter ? 'url(#ink-grain)' : undefined}>
+        {/* aura — silvery, just-barely-visible */}
+        <ellipse cx="32" cy="32" rx="24" ry="20" fill="#cbc4d0" opacity="0.2" />
+        {/* body — irregular shard, cracked along a diagonal */}
+        <path
+          d="M18 18 L 38 12 L 48 30 L 42 50 L 22 46 L 14 32 Z"
+          fill="#7d7d83"
+          stroke="#0e0e0c"
+          strokeWidth="0.8"
+        />
+        <path d="M38 12 L 42 50" stroke="#0e0e0c" strokeWidth="0.4" fill="none" opacity="0.6" />
+        {/* inner facets — cool-warm split, neither fully */}
+        <path d="M18 18 L 38 12 L 28 28 Z" fill="#a8a3aa" opacity="0.9" />
+        <path d="M42 50 L 48 30 L 36 36 Z" fill="#56565a" opacity="0.85" />
+        <path d="M14 32 L 22 46 L 28 30 Z" fill="#676769" opacity="0.9" />
+        {/* highlight — single bright glint, like condensation */}
+        <ellipse cx="26" cy="22" rx="1.8" ry="1.4" fill="#e5e2dd" opacity="0.8" />
+        {/* tiny amber mote — the only warmth */}
+        <ellipse cx="40" cy="40" rx="0.9" ry="0.7" fill="#ffd799" opacity="0.6" />
+      </g>
+    </InkSvg>
+  );
+}
+
 export function IngredientSvg({ id, className, size, dim, noFilter }: Props & { id: IngredientId }) {
   switch (id) {
     case 'moonbloom': return <Moonbloom className={className} size={size} dim={dim} noFilter={noFilter} />;
@@ -156,6 +222,8 @@ export function IngredientSvg({ id, className, size, dim, noFilter }: Props & { 
     case 'emberpetal': return <Emberpetal className={className} size={size} dim={dim} noFilter={noFilter} />;
     case 'darkspore': return <Darkspore className={className} size={size} dim={dim} noFilter={noFilter} />;
     case 'silvermoss': return <Silvermoss className={className} size={size} dim={dim} noFilter={noFilter} />;
+    case 'hollowroot': return <Hollowroot className={className} size={size} dim={dim} noFilter={noFilter} />;
+    case 'unknown': return <Unknown className={className} size={size} dim={dim} noFilter={noFilter} />;
   }
 }
 
@@ -166,8 +234,10 @@ export const INGREDIENT_NAMES: Record<IngredientId, string> = {
   emberpetal: 'Emberpetal',
   darkspore: 'Darkspore',
   silvermoss: 'Silvermoss',
+  hollowroot: 'Hollowroot',
+  unknown: 'Unknown',
 };
 
 export const INGREDIENT_ORDER: IngredientId[] = [
-  'moonbloom', 'ashroot', 'coldstone', 'emberpetal', 'darkspore', 'silvermoss',
+  'moonbloom', 'ashroot', 'coldstone', 'emberpetal', 'darkspore', 'silvermoss', 'hollowroot',
 ];

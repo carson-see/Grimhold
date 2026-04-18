@@ -15,3 +15,8 @@ coverage
 tsconfig.tsbuildinfo
 .playwright-mcp/
 grimhold-*.png
+l1-start.png
+lc-l1.png
+post-l1.png
+scene-01.png
+scene-02.png

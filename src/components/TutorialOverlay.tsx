@@ -3,8 +3,8 @@ import { useEffect } from 'react';
 import { IngredientSvg } from '../assets/Ingredients';
 import { Cauldron } from '../assets/Cauldron';
 
-// First-time tutorial that appears once on the player's first puzzle entry.
-// Persisted via `hasPlayedLevel1` in the store. Dismiss to begin.
+// First-time tutorial — appears once on the player's first Level 1 entry,
+// then stays dismissed for the rest of the save (tracked by `tutorialSeen`).
 
 export function TutorialOverlay({ onDismiss }: { onDismiss: () => void }) {
   const reduce = useReducedMotion();
