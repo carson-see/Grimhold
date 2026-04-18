@@ -10,6 +10,10 @@ import { Scene03 } from './screens/Scene03';
 import { Scene04 } from './screens/Scene04';
 import { Scene05 } from './screens/Scene05';
 import { Scene06 } from './screens/Scene06';
+import { Scene07 } from './screens/Scene07';
+import { Scene08 } from './screens/Scene08';
+import { Scene09 } from './screens/Scene09';
+import { Scene10 } from './screens/Scene10';
 import { LevelScreen } from './screens/Level';
 import { WispScene } from './screens/Wisp';
 import { LevelComplete } from './screens/LevelComplete';
@@ -39,6 +43,10 @@ export function App() {
         {screen === 'scene-04' && <Scene04 />}
         {screen === 'scene-05' && <Scene05 />}
         {screen === 'scene-06' && <Scene06 />}
+        {screen === 'scene-07' && <Scene07 />}
+        {screen === 'scene-08' && <Scene08 />}
+        {screen === 'scene-09' && <Scene09 />}
+        {screen === 'scene-10' && <Scene10 />}
         {screen === 'level-complete' && <LevelComplete />}
         {screen === 'larder-stub' && <LarderStub />}
       </motion.div>

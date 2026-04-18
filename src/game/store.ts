@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   CauldronId,
+  EncounterChoice,
   EncounterChoiceId,
   Ingredient,
   IngredientId,
@@ -11,7 +12,7 @@ import type {
   RecipePathId,
   Screen,
 } from './types';
-import { LEVEL_1, getLevel, nextLevelId } from '../data/levels';
+import { LEVEL_1, LEVELS, getLevel, nextLevelId } from '../data/levels';
 
 export type CharacterClass = 'witch' | 'rogue' | 'scholar' | 'knight';
 
@@ -35,6 +36,28 @@ export interface ArchitectVoiceState {
   dismissAt: number | null; // epoch ms when the whole voice moment ends
 }
 
+export interface JointSyncState {
+  open: boolean;
+  triggered: boolean;
+  hit: boolean;             // did the player land the sync window
+  dismissAt: number | null; // epoch ms — window expiry
+}
+
+export interface NoteFromWallState {
+  open: boolean;
+  triggered: boolean;
+  dismissAt: number | null;
+}
+
+// Persistent inventory — lore + key items collected during Act One.
+// Single source of truth for the union AND the persisted allowlist.
+export const INVENTORY_ITEM_IDS = [
+  'wren-crest-memory',  // L7 observe
+  'wall-note',          // L8 wall note added to lore log
+  'bessie-key',         // L10 silent drop
+] as const;
+export type InventoryItemId = typeof INVENTORY_ITEM_IDS[number];
+
 interface Store {
   // Meta / progression
   screen: Screen;
@@ -45,6 +68,7 @@ interface Store {
   tutorialSeen: boolean;
   bessieAllyActive: boolean;    // set to true if Level 3 recruit succeeds
   hasPocketedUnknown: boolean;  // L5 outcome — used in later acts
+  inventory: InventoryItemId[]; // lore + key items, additive across the run
   coins: number;
   gems: number;
   lastResult: LevelResult | null;
@@ -60,6 +84,8 @@ interface Store {
   encounter: EncounterState;
   memoryVision: MemoryVisionState;
   architectVoice: ArchitectVoiceState;
+  jointSync: JointSyncState;          // L7+ — Aldric sync window
+  noteFromWall: NoteFromWallState;    // L8 — Smudge prying note from crack
   conditionalDelivered: boolean;      // L5: Smudge has brought the Unknown
   timeSensitiveSatisfied: boolean;    // L6: C-Left has been filled at least once
 
@@ -77,6 +103,10 @@ interface Store {
   resolveEncounter: (choice: EncounterChoiceId) => void;
   dismissMemoryVision: () => void;
   dismissArchitectVoice: () => void;
+  dismissNoteFromWall: () => void;
+  registerJointSyncHit: () => void;     // player tap landed inside the sync window
+  expireJointSync: () => void;          // window elapsed without a hit
+  addInventory: (id: InventoryItemId) => void;
   finishLevel: () => LevelResult;
   advanceToNextLevel: () => void;
 }
@@ -162,14 +192,31 @@ function isPrefixMultiset(placed: IngredientId[], required: IngredientId[]): boo
 }
 
 // ── Win detection ──────────────────────────────────────────────────────────
-// If a conditional ingredient (L5's Unknown) is configured, it's allowed to
-// stay on the tray — the level can complete without it. Every other
-// ingredient must be placed before win is evaluated.
-function firstMatchingRecipe(ingredients: Ingredient[], level: LevelConfig): RecipePath | null {
+// The conditional ingredient (L5's Unknown) may stay on the tray — the
+// level can complete without it. Every other ingredient must be placed.
+//
+// On levels with `jointSync`, the recipe path it `unlocks` shares the
+// wall placement (both are valid on the same multiset). When the player
+// hit the sync, we PREFER the locked path so the joint wisp/reward
+// fires; without a hit we skip the locked path entirely so the wall
+// path wins instead.
+function firstMatchingRecipe(
+  ingredients: Ingredient[],
+  level: LevelConfig,
+  jointSyncHit: boolean,
+): RecipePath | null {
   const cond = level.conditionalIngredient;
   const allPlaced = ingredients.every((i) => i.placedIn !== null || i.kind === cond?.kind);
   if (!allPlaced) return null;
-  for (const recipe of level.recipes) if (recipeMatches(ingredients, level, recipe)) return recipe;
+  const lockedPathId = level.jointSync?.unlocks;
+  if (lockedPathId && jointSyncHit) {
+    const locked = level.recipes.find((r) => r.id === lockedPathId);
+    if (locked && recipeMatches(ingredients, level, locked)) return locked;
+  }
+  for (const recipe of level.recipes) {
+    if (lockedPathId && recipe.id === lockedPathId) continue;
+    if (recipeMatches(ingredients, level, recipe)) return recipe;
+  }
   return null;
 }
 
@@ -198,23 +245,62 @@ function emptyMemoryVision(): MemoryVisionState {
 function emptyArchitectVoice(): ArchitectVoiceState {
   return { open: false, triggered: false, fragmentIdx: 0, dismissAt: null };
 }
+function emptyJointSync(): JointSyncState {
+  return { open: false, triggered: false, hit: false, dismissAt: null };
+}
+function emptyNoteFromWall(): NoteFromWallState {
+  return { open: false, triggered: false, dismissAt: null };
+}
 
-// Encounter outcomes — pure, returns delta to apply to store.
-function resolveEncounterOutcome(choice: EncounterChoiceId, coins: number):
-  { coinsDelta: number; movesDelta: number; ally: boolean } {
-  switch (choice) {
+// Force-close any of the overlay states without touching `triggered` —
+// keeps the "fired this level" marker intact so the overlay can't re-fire,
+// just closes the visible UI when the level wins on the same tick. The
+// shape varies (some have `dismissAt`, encounter has `deadline`); we
+// blanket-null both fields where they exist.
+function closeOverlay<T extends { open: boolean }>(s: T): T {
+  if (!s.open) return s;
+  const cleared: Record<string, unknown> = { ...s, open: false };
+  if ('dismissAt' in cleared) cleared.dismissAt = null;
+  if ('deadline' in cleared) cleared.deadline = null;
+  return cleared as T;
+}
+
+// Encounter outcomes — pure, returns delta to apply to store. Wren and the
+// final Bessie key drop add inventory effects via `grant`; `cost` from the
+// choice config drives the coin/move penalty so doc-level tuning lives in
+// `levels.ts`, not here.
+function resolveEncounterOutcome(
+  choice: EncounterChoice,
+  coins: number,
+):
+  { coinsDelta: number; movesDelta: number; ally: boolean; grant?: InventoryItemId } {
+  const movesDelta = choice.cost?.moves ?? 0;
+  const coinCost = choice.cost?.coins ?? 0;
+  const coinsDelta = coinCost > 0 ? -Math.min(coinCost, coins) : 0;
+  switch (choice.id) {
     case 'bribe':
-      return { coinsDelta: -Math.min(500, coins), movesDelta: 0, ally: true };
+      return { coinsDelta, movesDelta, ally: true };
     case 'distract':
-      return { coinsDelta: 0, movesDelta: 1, ally: false };
+    case 'silent':
+    case 'ignore':
+      return { coinsDelta, movesDelta, ally: false };
     case 'recruit': {
       // 60% success per Level Document. Per-session Math.random — that's
       // desired (no save-scumming via reload).
-      const success = Math.random() < 0.6;
-      return { coinsDelta: 0, movesDelta: 0, ally: success };
+      return { coinsDelta, movesDelta, ally: Math.random() < 0.6 };
     }
-    case 'silent':
-      return { coinsDelta: 0, movesDelta: 0, ally: false };
+    case 'observe':
+      return { coinsDelta, movesDelta, ally: false, grant: 'wren-crest-memory' };
+    case 'callout':
+      // Cost lives on the choice config (levels.ts). Doc says "next level"
+      // but we land it on this brew so the player feels the cost in-flight.
+      return { coinsDelta, movesDelta, ally: false };
+    case 'pickup':
+      return { coinsDelta, movesDelta, ally: false, grant: 'bessie-key' };
+    default: {
+      const _exhaustive: never = choice.id;
+      throw new Error(`Unhandled encounter choice: ${_exhaustive}`);
+    }
   }
 }
 
@@ -254,6 +340,7 @@ export const useGame = create<Store>()(
       tutorialSeen: false,
       bessieAllyActive: false,
       hasPocketedUnknown: false,
+      inventory: [],
       coins: 0,
       gems: 0,
       lastResult: null,
@@ -269,6 +356,8 @@ export const useGame = create<Store>()(
       encounter: emptyEncounter(),
       memoryVision: emptyMemoryVision(),
       architectVoice: emptyArchitectVoice(),
+      jointSync: emptyJointSync(),
+      noteFromWall: emptyNoteFromWall(),
       conditionalDelivered: false,
       timeSensitiveSatisfied: false,
 
@@ -291,8 +380,10 @@ export const useGame = create<Store>()(
           encounter: emptyEncounter(),
           memoryVision: emptyMemoryVision(),
           architectVoice: emptyArchitectVoice(),
+          jointSync: emptyJointSync(),
+          noteFromWall: emptyNoteFromWall(),
           conditionalDelivered: false,
-      timeSensitiveSatisfied: false,
+          timeSensitiveSatisfied: false,
           lastResult: null,
         });
       },
@@ -309,8 +400,10 @@ export const useGame = create<Store>()(
           encounter: emptyEncounter(),
           memoryVision: emptyMemoryVision(),
           architectVoice: emptyArchitectVoice(),
+          jointSync: emptyJointSync(),
+          noteFromWall: emptyNoteFromWall(),
           conditionalDelivered: false,
-      timeSensitiveSatisfied: false,
+          timeSensitiveSatisfied: false,
           lastResult: null,
         });
       },
@@ -320,11 +413,11 @@ export const useGame = create<Store>()(
           set({ selectedIngredientId: null });
           return;
         }
-        // Block selection during blocking overlays (encounter or memory).
-        // Architect voice is intentionally non-blocking — player keeps
-        // sorting while the fragments play.
-        const { encounter, memoryVision } = get();
-        if (encounter.open || memoryVision.open) return;
+        // Block selection during blocking overlays (encounter, memory,
+        // note-from-wall). Architect voice and joint-sync are non-
+        // blocking — player keeps sorting while they play.
+        const { encounter, memoryVision, noteFromWall } = get();
+        if (encounter.open || memoryVision.open || noteFromWall.open) return;
         const ing = get().ingredients.find((i) => i.id === id);
         if (!ing || ing.placedIn !== null) return;
         set({ selectedIngredientId: id });
@@ -332,9 +425,9 @@ export const useGame = create<Store>()(
 
       placeInCauldron: (cauldron) => {
         const s = get();
-        const { selectedIngredientId, ingredients, movesUsed, level, completed, failed, encounter, memoryVision, timeSensitiveSatisfied } = s;
+        const { selectedIngredientId, ingredients, movesUsed, level, completed, failed, encounter, memoryVision, noteFromWall, timeSensitiveSatisfied, jointSync } = s;
         if (completed || failed || !selectedIngredientId) return;
-        if (encounter.open || memoryVision.open) return;
+        if (encounter.open || memoryVision.open || noteFromWall.open) return;
         if (movesUsed >= level.moveLimit) return;
 
         const nextMoves = movesUsed + 1;
@@ -356,7 +449,7 @@ export const useGame = create<Store>()(
           next = [...next, { id: `${kind}-delivered`, kind, placedIn: null }];
         }
 
-        const match = firstMatchingRecipe(next, level);
+        const match = firstMatchingRecipe(next, level, jointSync.hit);
 
         // Time-sensitive cauldron — tracked as "has it ever been filled
         // by the deadline?" Once satisfied, the check stays satisfied
@@ -379,18 +472,23 @@ export const useGame = create<Store>()(
           completedPathId: match?.id ?? null,
           failed: overheated,
           timeSensitiveSatisfied: nowSatisfied,
-          // Suppress overlay opens if the move also completed the level.
-          encounter: match ? encounter : (overlays.encounter ?? encounter),
-          memoryVision: match ? memoryVision : (overlays.memoryVision ?? memoryVision),
-          architectVoice: match ? s.architectVoice : (overlays.architectVoice ?? s.architectVoice),
+          // Suppress new overlay opens AND force-close any in-flight
+          // overlay if the move also completed the level — otherwise the
+          // joint-sync / note-from-wall panels linger over the wisp
+          // celebration during the ~900ms transition.
+          encounter: match ? closeOverlay(encounter) : (overlays.encounter ?? encounter),
+          memoryVision: match ? closeOverlay(memoryVision) : (overlays.memoryVision ?? memoryVision),
+          architectVoice: match ? closeOverlay(s.architectVoice) : (overlays.architectVoice ?? s.architectVoice),
+          jointSync: match ? closeOverlay(s.jointSync) : (overlays.jointSync ?? s.jointSync),
+          noteFromWall: match ? closeOverlay(s.noteFromWall) : (overlays.noteFromWall ?? s.noteFromWall),
           conditionalDelivered: overlays.conditionalDelivered ?? s.conditionalDelivered,
         });
       },
 
       removeFromCauldron: (id) => {
-        const { ingredients, movesUsed, level, completed, failed, encounter, memoryVision } = get();
+        const { ingredients, movesUsed, level, completed, failed, encounter, memoryVision, noteFromWall } = get();
         if (completed || failed || movesUsed >= level.moveLimit) return;
-        if (encounter.open || memoryVision.open) return;
+        if (encounter.open || memoryVision.open || noteFromWall.open) return;
         const target = ingredients.find((i) => i.id === id);
         if (!target || target.placedIn === null) return; // no-op on unplaced
         const next = ingredients.map((i) =>
@@ -403,16 +501,19 @@ export const useGame = create<Store>()(
         });
       },
 
-      resolveEncounter: (choice) => {
+      resolveEncounter: (choiceId) => {
         const { level, encounter, coins, movesUsed } = get();
         if (!encounter.open || !level.encounter) return;
+        const choice = level.encounter.choices.find((c) => c.id === choiceId);
+        if (!choice) return;
         const outcome = resolveEncounterOutcome(choice, coins);
         set({
           coins: coins + outcome.coinsDelta,
           movesUsed: movesUsed + outcome.movesDelta,
           bessieAllyActive: outcome.ally ? true : get().bessieAllyActive,
-          encounter: { open: false, triggered: true, choice, deadline: null },
+          encounter: { open: false, triggered: true, choice: choiceId, deadline: null },
         });
+        if (outcome.grant) get().addInventory(outcome.grant);
       },
 
       dismissMemoryVision: () => {
@@ -427,8 +528,35 @@ export const useGame = create<Store>()(
         set({ architectVoice: { ...architectVoice, open: false, dismissAt: null } });
       },
 
+      dismissNoteFromWall: () => {
+        const { noteFromWall, level } = get();
+        if (!noteFromWall.open) return;
+        set({ noteFromWall: { ...noteFromWall, open: false, dismissAt: null } });
+        if (level.noteFromWall) get().addInventory('wall-note');
+      },
+
+      registerJointSyncHit: () => {
+        const { jointSync } = get();
+        if (!jointSync.open || jointSync.hit) return;
+        set({ jointSync: { ...jointSync, open: false, hit: true, dismissAt: null } });
+      },
+
+      expireJointSync: () => {
+        const { jointSync } = get();
+        if (!jointSync.open) return;
+        // Window elapsed without a hit — joint recipe variant is now
+        // unreachable for the rest of this level.
+        set({ jointSync: { ...jointSync, open: false, dismissAt: null } });
+      },
+
+      addInventory: (id) => {
+        const { inventory } = get();
+        if (inventory.includes(id)) return;
+        set({ inventory: [...inventory, id] });
+      },
+
       finishLevel: () => {
-        const { movesUsed, level, completedPathId, coins, gems, highestLevelCleared, encounter, lastResult, ingredients, conditionalDelivered } = get();
+        const { movesUsed, level, completedPathId, coins, gems, highestLevelCleared, encounter, lastResult, ingredients, conditionalDelivered, jointSync } = get();
         // Idempotent: React 18 StrictMode double-invokes setState initializers
         // and effect callbacks in dev, and LevelComplete calls this from a
         // useState initializer. Without this guard the user would double-bank
@@ -436,8 +564,15 @@ export const useGame = create<Store>()(
         if (lastResult && lastResult.levelId === level.id) return lastResult;
         const path = level.recipes.find((r) => r.id === completedPathId) ?? level.recipes[0];
         const stars = computeStars(movesUsed, level);
-        const earnedCoins = stars === 3 ? 1000 : stars === 2 ? 600 : 200;
-        const earnedGems = level.id > highestLevelCleared ? 1 : 0; // first clear only
+        // L10 finale per doc: 1500/800/300 coins. Other levels: 1000/600/200.
+        const finaleCoins = stars === 3 ? 1500 : stars === 2 ? 800 : 300;
+        const standardCoins = stars === 3 ? 1000 : stars === 2 ? 600 : 200;
+        const earnedCoins = level.id === LEVELS[LEVELS.length - 1].id ? finaleCoins : standardCoins;
+        // First clear → 1 gem; L9 refusal path → +1 bonus gem; L10 finale → +5 chapter bonus.
+        const firstClearGem = level.id > highestLevelCleared ? 1 : 0;
+        const refusalBonus = path.id === 'refusal' ? 1 : 0;
+        const finaleBonus = level.id === LEVELS[LEVELS.length - 1].id ? 5 : 0;
+        const earnedGems = firstClearGem + refusalBonus + finaleBonus;
         const cond = level.conditionalIngredient;
         // Only counts as "pocketed" if the Unknown was actually delivered
         // first — an early-finish player who never saw it shouldn't get
@@ -455,6 +590,7 @@ export const useGame = create<Store>()(
           recipePathId: path.id,
           encounterChoice: encounter.choice ?? undefined,
           pocketedUnknown: cond ? pocketedUnknown : undefined,
+          jointHit: level.jointSync ? jointSync.hit : undefined,
         };
         set({
           lastResult: result,
@@ -479,7 +615,7 @@ export const useGame = create<Store>()(
     }),
     {
       name: 'grimhold-save-v0',
-      version: 3, // bumped — L4-L6 adds hasPocketedUnknown + new screens
+      version: 4, // bumped — L7-L10 adds inventory + jointSync state
       // Any version < current → let the merge() below clean it up. Returning
       // the raw persisted state here means merge() handles all validation.
       migrate: (persisted) => persisted,
@@ -491,6 +627,7 @@ export const useGame = create<Store>()(
         tutorialSeen: s.tutorialSeen,
         bessieAllyActive: s.bessieAllyActive,
         hasPocketedUnknown: s.hasPocketedUnknown,
+        inventory: s.inventory,
         coins: s.coins,
         gems: s.gems,
       }),
@@ -504,10 +641,12 @@ export const useGame = create<Store>()(
           tutorialSeen: unknown;
           bessieAllyActive: unknown;
           hasPocketedUnknown: unknown;
+          inventory: unknown;
           coins: unknown;
           gems: unknown;
         }>;
         const allowedClasses: CharacterClass[] = ['witch', 'rogue', 'scholar', 'knight'];
+        const allowedInventory: readonly InventoryItemId[] = INVENTORY_ITEM_IDS;
         // Strict: `Number(null) === 0` would silently zero out a user's
         // progress if the persisted field is null/undefined. Require the
         // value to already be a finite number before accepting it.
@@ -516,6 +655,12 @@ export const useGame = create<Store>()(
         // v1 stored hasPlayedLevel1 as a boolean; migrate to tutorialSeen and
         // highestLevelCleared=1 so returning players don't re-see the tutorial.
         const v1Played = typeof p.hasPlayedLevel1 === 'boolean' && p.hasPlayedLevel1 === true;
+        const inv = Array.isArray(p.inventory)
+          ? (p.inventory.filter(
+              (x): x is InventoryItemId =>
+                typeof x === 'string' && (allowedInventory as string[]).includes(x),
+            ))
+          : current.inventory;
         return {
           ...current,
           character: typeof p.character === 'string' && (allowedClasses as string[]).includes(p.character)
@@ -526,11 +671,14 @@ export const useGame = create<Store>()(
             : current.name,
           hasSeenOpening: typeof p.hasSeenOpening === 'boolean' ? p.hasSeenOpening : current.hasSeenOpening,
           highestLevelCleared: typeof p.highestLevelCleared === 'number' && Number.isFinite(p.highestLevelCleared)
-            ? Math.max(0, Math.min(10, Math.floor(p.highestLevelCleared)))
+            // Clamp against the act's defined level count, not a hard 10 —
+            // Chapter Two will append IDs > 10 to LEVELS.
+            ? Math.max(0, Math.min(LEVELS.length, Math.floor(p.highestLevelCleared)))
             : v1Played ? 1 : current.highestLevelCleared,
           tutorialSeen: typeof p.tutorialSeen === 'boolean' ? p.tutorialSeen : v1Played || current.tutorialSeen,
           bessieAllyActive: typeof p.bessieAllyActive === 'boolean' ? p.bessieAllyActive : current.bessieAllyActive,
           hasPocketedUnknown: typeof p.hasPocketedUnknown === 'boolean' ? p.hasPocketedUnknown : current.hasPocketedUnknown,
+          inventory: inv,
           coins: coinsNum !== null ? Math.max(0, Math.min(9_999_999, Math.floor(coinsNum))) : current.coins,
           gems: gemsNum !== null ? Math.max(0, Math.min(99_999, Math.floor(gemsNum))) : current.gems,
         };
@@ -543,19 +691,27 @@ export const useGame = create<Store>()(
 // open on this move. Caller spreads the result into `set`. The caller is
 // responsible for suppressing overlays when the move also won the level.
 function computeOverlays(
-  s: Pick<Store, 'encounter' | 'memoryVision' | 'architectVoice' | 'conditionalDelivered'>,
+  s: Pick<
+    Store,
+    'encounter' | 'memoryVision' | 'architectVoice' | 'jointSync' | 'noteFromWall' | 'conditionalDelivered' | 'bessieAllyActive'
+  >,
   level: LevelConfig,
   nextMoves: number,
 ): {
   encounter?: EncounterState;
   memoryVision?: MemoryVisionState;
   architectVoice?: ArchitectVoiceState;
+  jointSync?: JointSyncState;
+  noteFromWall?: NoteFromWallState;
   conditionalDelivered?: boolean;
 } {
   const out: ReturnType<typeof computeOverlays> = {};
 
   const enc = level.encounter;
-  if (enc && !s.encounter.triggered && nextMoves >= enc.triggerMove) {
+  // Wren / Bessie-final encounters can be gated on ally state. The L10
+  // Bessie key drop only fires if Bessie was recruited in L3.
+  const allyOk = !enc?.requiresAlly || (enc.requiresAlly === 'bessie' && s.bessieAllyActive);
+  if (enc && allyOk && !s.encounter.triggered && nextMoves >= enc.triggerMove) {
     out.encounter = {
       open: true,
       triggered: true,
@@ -580,6 +736,25 @@ function computeOverlays(
       triggered: true,
       fragmentIdx: 0,
       dismissAt: Date.now() + av.durationMs,
+    };
+  }
+
+  const js = level.jointSync;
+  if (js && !s.jointSync.triggered && nextMoves >= js.triggerMove) {
+    out.jointSync = {
+      open: true,
+      triggered: true,
+      hit: false,
+      dismissAt: Date.now() + js.windowSeconds * 1000,
+    };
+  }
+
+  const nfw = level.noteFromWall;
+  if (nfw && !s.noteFromWall.triggered && nextMoves >= nfw.triggerMove) {
+    out.noteFromWall = {
+      open: true,
+      triggered: true,
+      dismissAt: Date.now() + nfw.durationMs,
     };
   }
 

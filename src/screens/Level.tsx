@@ -8,6 +8,8 @@ import { EncounterModal } from '../components/EncounterModal';
 import { FailOverlay } from '../components/FailOverlay';
 import { MemoryVisionOverlay } from '../components/MemoryVisionOverlay';
 import { ArchitectVoiceBanner } from '../components/ArchitectVoiceBanner';
+import { JointSyncOverlay } from '../components/JointSyncOverlay';
+import { NoteFromWallOverlay } from '../components/NoteFromWallOverlay';
 import { EventToast } from '../components/EventToast';
 import { MiraBust } from '../assets/MiraSmudge';
 import { Cauldron } from '../assets/Cauldron';
@@ -18,6 +20,7 @@ import { cauldronStatus, useGame } from '../game/store';
 import { CAULDRON_LABEL } from '../data/levels';
 import { playMusicBoxNote } from '../game/audio';
 import { RecipePanel } from '../components/RecipePanel';
+import { BlankWallPanel } from '../components/BlankWallPanel';
 
 export function LevelScreen() {
   const level = useGame((s) => s.level);
@@ -40,9 +43,14 @@ export function LevelScreen() {
   const encounterOpen = useGame((s) => s.encounter.open);
   const memoryVisionOpen = useGame((s) => s.memoryVision.open);
   const architectVoiceOpen = useGame((s) => s.architectVoice.open);
+  const jointSyncOpen = useGame((s) => s.jointSync.open);
+  const noteFromWallOpen = useGame((s) => s.noteFromWall.open);
   const storeFailed = useGame((s) => s.failed);
   const reduce = useReducedMotion();
-  const anyBlockingOverlay = encounterOpen || memoryVisionOpen;
+  // Joint sync and architect voice are intentionally non-blocking — the
+  // puzzle keeps running underneath. Encounter, memory and the wall note
+  // are blocking modals.
+  const anyBlockingOverlay = encounterOpen || memoryVisionOpen || noteFromWallOpen;
 
   // Tutorial only appears once, on Level 1, for the very first session.
   const [tutorialOpen, setTutorialOpen] = useState(!tutorialSeen && level.id === 1);
@@ -58,13 +66,16 @@ export function LevelScreen() {
     cauldronCount >= 4 ? 'grid-cols-4' : cauldronCount === 3 ? 'grid-cols-3' : 'grid-cols-2';
   const cauldronSize =
     cauldronCount >= 4 ? 64 : cauldronCount === 3 ? 80 : 104;
-  const wallRecipe = level.recipes.find((r) => r.handwriting === 'wall');
-  const slidRecipe = level.recipes.find((r) => r.handwriting === 'slid');
+  // Hidden recipes (joint variants, L9 unwritten paths) are not shown in
+  // the HUD — the player discovers them through play.
+  const wallRecipe = level.recipes.find((r) => r.handwriting === 'wall' && !r.hidden);
+  const slidRecipe = level.recipes.find((r) => r.handwriting === 'slid' && !r.hidden);
   const volatileKinds = new Set(level.volatility?.kinds ?? []);
   const tsCauldron = level.timeSensitive?.cauldron;
   const tsMovesLeft = level.timeSensitive
     ? Math.max(0, level.timeSensitive.fillByMove - movesUsed)
     : null;
+  const syncCauldron = jointSyncOpen ? level.jointSync?.cauldron : null;
 
   const dismissTutorial = () => {
     setTutorialOpen(false);
@@ -103,15 +114,21 @@ export function LevelScreen() {
         <HudBar lives={3} movesRemaining={movesRemaining} />
 
         <div className="mx-4 mt-1 mb-2 space-y-2">
-          {wallRecipe && (
-            <RecipePanel
-              recipe={wallRecipe}
-              cauldrons={level.cauldrons}
-              title={level.title}
-              chapter={level.chapterLabel}
-            />
+          {level.blankWall ? (
+            <BlankWallPanel level={level} />
+          ) : (
+            <>
+              {wallRecipe && (
+                <RecipePanel
+                  recipe={wallRecipe}
+                  cauldrons={level.cauldrons}
+                  title={level.title}
+                  chapter={level.chapterLabel}
+                />
+              )}
+              {slidRecipe && <RecipePanel recipe={slidRecipe} cauldrons={level.cauldrons} />}
+            </>
           )}
-          {slidRecipe && <RecipePanel recipe={slidRecipe} cauldrons={level.cauldrons} />}
         </div>
 
         <div className="px-3 mt-1">
@@ -124,6 +141,7 @@ export function LevelScreen() {
               const cueing = !!selectedIngredientId && !completed && !anyBlockingOverlay && state !== 'correct' && !reduce;
               const labelText = CAULDRON_LABEL[cid];
               const isTimeSensitive = tsCauldron === cid && !placed.length && tsMovesLeft !== null && tsMovesLeft > 0;
+              const isSyncTarget = syncCauldron === cid;
               return (
                 <div
                   key={cid}
@@ -135,6 +153,7 @@ export function LevelScreen() {
                     state === 'correct' ? 'ring-1 ring-primary/30' : '',
                     state === 'wrong' ? 'ring-1 ring-error/40' : '',
                     isTimeSensitive ? 'ring-1 ring-secondary/60 shadow-[0_0_16px_rgba(255,215,153,0.28)]' : '',
+                    isSyncTarget ? 'ring-2 ring-secondary/80 shadow-[0_0_22px_rgba(255,215,153,0.45)] animate-pulse' : '',
                   ].join(' ')}
                 >
                   {isTimeSensitive && (
@@ -296,6 +315,14 @@ export function LevelScreen() {
 
         <AnimatePresence>
           {architectVoiceOpen && level.architectVoice && <ArchitectVoiceBanner />}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {jointSyncOpen && level.jointSync && <JointSyncOverlay />}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {noteFromWallOpen && level.noteFromWall && <NoteFromWallOverlay />}
         </AnimatePresence>
 
         <EventToast />

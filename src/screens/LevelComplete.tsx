@@ -14,7 +14,10 @@ const WISP_LABEL: Record<WispColor, string> = {
   'violet-amber': 'a violet wisp, faintly amber-stirred',
   'violet-dark': 'a violet wisp with a darker thread',
   'violet-strong': 'a violet wisp — brighter than before',
+  'violet-grey': 'a violet wisp threaded warm grey',
   'downward-grey': 'a grey wisp that went down, not up',
+  black: 'a black wisp that circled and returned',
+  silent: 'no wisp at all — silence above the cauldron',
 };
 
 export function LevelComplete() {
@@ -59,14 +62,22 @@ export function LevelComplete() {
   const pathBlurb = level.recipes.length > 1 ? recipe.label : null;
 
   const handleContinue = () => {
+    // Two scene slots in the implementation:
+    //   - Post-wisp (Scene 04-10 in Wisp.tsx POST_WISP_SCREEN) — already
+    //     played by the time LevelComplete shows up.
+    //   - Between-level (Scene 02 / 03) — fire here, between LC and the
+    //     next level. Anything else jumps straight to the next level.
+    // After the last level, drop into the Larder stub (chapter close).
     switch (levelId) {
-      case 1: setScreen('scene-02'); break;            // → Scene 02, then L2
-      case 2: startLevel(3); setScreen('level'); break; // → L3 directly
-      case 3: setScreen('scene-03'); break;            // → Scene 03, then L4
-      case 4: startLevel(5); setScreen('level'); break; // → L5 directly
-      case 5: startLevel(6); setScreen('level'); break; // → L6 directly
-      case 6: setScreen('larder-stub'); break;         // end of v0 arc
-      default: setScreen('larder-stub'); break;
+      case 1: setScreen('scene-02'); return;            // → Scene 02, then L2
+      case 3: setScreen('scene-03'); return;            // → Scene 03, then L4
+      default:
+        if (nextId !== null) {
+          startLevel(nextId);
+          setScreen('level');
+        } else {
+          setScreen('larder-stub');
+        }
     }
   };
 

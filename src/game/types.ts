@@ -1,4 +1,4 @@
-// Grimhold type surface — Act One, Chapter One, Levels 1–6.
+// Grimhold type surface — Act One, Chapter One, Levels 1–10.
 // Mechanics accumulate through the act:
 //   L1: single-recipe teaching level
 //   L2: multi-recipe paths (wall + slid)
@@ -6,6 +6,10 @@
 //   L4: volatile ingredients + memory vision
 //   L5: conditional ingredient + downward wisp
 //   L6: four cauldrons + time-sensitive overheat + Architect voice
+//   L7: Aldric joint sync, Wren encounter, Greystone introduced
+//   L8: Note from the wall (long pause), Bessie window cameo, sync + time + volatile
+//   L9: blank wall — full deviation freedom (compliance/deviation/refusal paths)
+//   L10: chapter finale — two syncs, Bessie key drop, floor reveal
 
 export type IngredientId =
   | 'moonbloom'
@@ -15,10 +19,11 @@ export type IngredientId =
   | 'darkspore'
   | 'silvermoss'
   | 'hollowroot'
+  | 'greystone'
   | 'unknown';
 
-// Four distinct slot IDs — L6 introduces center-left and center-right for
-// the four-cauldron layout.
+// Four distinct slot IDs — L6+ uses center-left and center-right for the
+// four-cauldron layout.
 export type CauldronId = 'left' | 'center-left' | 'center' | 'center-right' | 'right';
 
 export type WispColor =
@@ -27,7 +32,10 @@ export type WispColor =
   | 'violet-amber'
   | 'violet-dark'
   | 'violet-strong'
-  | 'downward-grey';
+  | 'violet-grey'        // L7: Aldric synced — partly violet, partly warm grey
+  | 'downward-grey'
+  | 'black'              // L9 deviation — circles the room, returns to cauldron
+  | 'silent';            // L9 fully refused — no wisp, the dungeon receives nothing
 
 export type Screen =
   | 'title'
@@ -42,6 +50,10 @@ export type Screen =
   | 'scene-04'
   | 'scene-05'
   | 'scene-06'
+  | 'scene-07'
+  | 'scene-08'
+  | 'scene-09'
+  | 'scene-10'
   | 'level-complete'
   | 'larder-stub';
 
@@ -53,23 +65,40 @@ export interface Ingredient {
 
 // A level can end by matching any one of several recipes. Each path has its
 // own wisp color and narrative framing.
-export type RecipePathId = 'wall' | 'slid' | 'joint' | 'downward' | 'compliant';
+export type RecipePathId =
+  | 'wall'
+  | 'slid'
+  | 'joint'
+  | 'downward'
+  | 'compliant'
+  | 'deviation'         // L9 — partial deviation, mixed wisp
+  | 'refusal';          // L9 — full deviation, black wisp / silent rise
 
 export interface RecipePath {
   id: RecipePathId;
   label: string;          // "The Wall Recipe", "The Slid Paper", …
-  handwriting: 'wall' | 'slid'; // which chalk treatment to use in UI
+  handwriting: 'wall' | 'slid' | 'unwritten'; // 'unwritten' for L9's blank wall
   placement: Partial<Record<CauldronId, IngredientId[]>>;
   wispColor: WispColor;
   powerUpLabel: string;
   powerUpDetail: string;
+  /** Hide this recipe from the in-puzzle HUD (player must discover it). */
+  hidden?: boolean;
 }
 
-// Encounters interrupt the level at a specific move count. Currently only
-// Bessie Tallow (L3), but shaped to accept future encounters.
-export type EncounterId = 'bessie-tallow';
+// Encounters interrupt the level at a specific move count. L7 adds Wren
+// (the noble visitor), L10 adds the silent Bessie key drop.
+export type EncounterId = 'bessie-tallow' | 'wren-visitor' | 'bessie-final';
 
-export type EncounterChoiceId = 'bribe' | 'distract' | 'recruit' | 'silent';
+export type EncounterChoiceId =
+  | 'bribe'
+  | 'distract'
+  | 'recruit'
+  | 'silent'
+  | 'observe'    // L7 Wren — memorise his ring crest
+  | 'callout'    // L7 Wren — speak up despite Aldric's warning
+  | 'pickup'     // L10 Bessie — pick up the key
+  | 'ignore';    // L10 Bessie — leave it for now
 
 export interface EncounterChoice {
   id: EncounterChoiceId;
@@ -88,6 +117,8 @@ export interface EncounterConfig {
   role: string;
   whisper: string;
   choices: EncounterChoice[];
+  /** Suppress this encounter unless Bessie was recruited in L3. */
+  requiresAlly?: 'bessie';
 }
 
 // L4 — the cauldron water stills and shows a silent memory vision.
@@ -127,10 +158,35 @@ export interface TimeSensitiveConfig {
 
 // L4 / L6 — volatile ingredients relocate to the next cauldron every
 // `shiftEveryMoves` placements. Only ingredients in the listed `kinds`
-// volatility; the rotation order is the level's cauldron list.
+// are affected; the rotation order is the level's cauldron list.
 export interface VolatilityConfig {
   kinds: IngredientId[];
   shiftEveryMoves: number;
+}
+
+// L7 / L8 / L10 — Aldric joins from the next cell over. Player taps the
+// indicated cauldron during the sync window; success unlocks a joint
+// recipe variant (warm-grey wisp). Miss → variant unreachable this run.
+export interface JointSyncConfig {
+  /** Move at which the sync window opens. */
+  triggerMove: number;
+  /** Cauldron the player must tap-and-hold against. */
+  cauldron: CauldronId;
+  /** Sync window size in seconds. */
+  windowSeconds: number;
+  /** Recipe path id unlocked by a successful sync (default: 'joint'). */
+  unlocks?: RecipePathId;
+  /** Fragment Aldric whispers when the sync opens. */
+  whisper: string;
+}
+
+// L8 — Smudge pries a worn note from a crack in the floor. Blocking
+// pause; the puzzle resumes when the player dismisses (or the timer
+// expires). The text is added to the lore log on dismiss.
+export interface NoteFromWallConfig {
+  triggerMove: number;
+  durationMs: number;
+  text: string;
 }
 
 export interface LevelConfig {
@@ -149,6 +205,10 @@ export interface LevelConfig {
   architectVoice?: ArchitectVoiceConfig;
   timeSensitive?: TimeSensitiveConfig;
   volatility?: VolatilityConfig;
+  jointSync?: JointSyncConfig;
+  noteFromWall?: NoteFromWallConfig;
+  /** L9 — wall is intentionally blank; player navigates without a recipe HUD. */
+  blankWall?: boolean;
   closingLine: string;
 }
 
@@ -162,4 +222,5 @@ export interface LevelResult {
   recipePathId: RecipePathId;
   encounterChoice?: EncounterChoiceId;
   pocketedUnknown?: boolean; // only meaningful on L5
+  jointHit?: boolean;        // L7+ — true if the Aldric sync window was caught
 }

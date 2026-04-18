@@ -14,6 +14,7 @@ coverage
 .playwright
 tsconfig.tsbuildinfo
 .playwright-mcp/
+.claude/
 grimhold-*.png
 l1-start.png
 lc-l1.png

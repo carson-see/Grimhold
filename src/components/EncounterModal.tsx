@@ -5,11 +5,11 @@ import { useGame } from '../game/store';
 import type { EncounterChoice, EncounterChoiceId } from '../game/types';
 import { useCountdownDismiss } from './useCountdownDismiss';
 
-// Mid-level encounter — currently only Bessie Tallow in Level 3. The
-// countdown duration lives on the encounter config (`decisionSeconds`);
-// when it expires the encounter's `defaultChoice` is auto-selected. The
-// PRD allows at most ONE numerical countdown on screen, so this is the
-// only visible timer while the modal is open.
+// Mid-level encounter — Bessie Tallow (L3), Wren (L7), and Bessie's
+// silent key drop (L10). The countdown duration lives on the encounter
+// config (`decisionSeconds`); when it expires the `defaultChoice` is
+// auto-selected. PRD allows at most ONE numerical countdown on screen,
+// so this is the only visible timer while the modal is open.
 
 export function EncounterModal() {
   // Primitive selectors — the modal ticks at 10 Hz so we avoid pulling
@@ -126,7 +126,11 @@ export function EncounterModal() {
                         ? 'border-secondary/40 bg-secondary-container/15 hover:border-secondary'
                         : 'border-outline/25 bg-surface-container-high/60 hover:border-primary/50',
                 ].join(' ')}
-                aria-label={`${choice.label}${choice.cost?.coins ? `, costs ${choice.cost.coins} coins` : ''}`}
+                aria-label={[
+                  choice.label,
+                  choice.cost?.coins ? `costs ${choice.cost.coins} coins` : '',
+                  choice.cost?.moves ? `costs ${choice.cost.moves} move${choice.cost.moves === 1 ? '' : 's'}` : '',
+                ].filter(Boolean).join(', ')}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-headline text-sm text-on-surface">{choice.label}</span>
@@ -144,7 +148,7 @@ export function EncounterModal() {
                     )}
                     {choice.cost?.moves && (
                       <span className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">
-                        −{choice.cost.moves} move
+                        −{choice.cost.moves} {choice.cost.moves === 1 ? 'move' : 'moves'}
                       </span>
                     )}
                     {isDefault && (

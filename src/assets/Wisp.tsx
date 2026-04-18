@@ -3,13 +3,17 @@ import type { WispColor } from '../game/types';
 
 type Props = { className?: string; size?: number; color?: WispColor };
 
-// Six wisp colors through L1–L6 per Level Doc:
+// Wisp colors through Act One per Level Doc:
 //   violet         → standard wall-recipe clear (L1, L2 wall, L5 wall)
-//   amber-threaded → slid-recipe clear (L2 slid)
+//   amber-threaded → slid-recipe clear (L2 slid, L9 partial deviation)
 //   violet-amber   → encounter-perturbed wisp (L3, Bessie present)
 //   violet-dark    → memory-vision wisp (L4 — grief-resonance darkening)
-//   violet-strong  → Architect-noticed wisp (L6 — cleaner output)
+//   violet-strong  → Architect-noticed wisp (L6, L8, L10 — cleaner output)
+//   violet-grey    → joint sync with Aldric (L7, L8, L10)
 //   downward-grey  → the wisp that doesn't rise (L5, Unknown in Left)
+//   black          → L9 refusal — circles the room and returns to cauldron
+//   silent         → L9 hard refusal stub (no wisp at all; Wisp screen
+//                    suppresses render and the palette entry is unused)
 const PALETTE: Record<WispColor, { core: string; mid: string; halo: string; thread?: string }> = {
   violet: { core: '#d2bcfa', mid: '#9783bd', halo: 'rgba(210,188,250,0.55)' },
   'amber-threaded': {
@@ -35,10 +39,30 @@ const PALETTE: Record<WispColor, { core: string; mid: string; halo: string; thre
     mid: '#a786d8',
     halo: 'rgba(167,134,216,0.7)',
   },
+  'violet-grey': {
+    // Aldric's contribution — warm grey threading through the violet.
+    core: '#d2bcfa',
+    mid: '#9783bd',
+    halo: 'rgba(154,138,122,0.45)',
+    thread: '#9a8a7a',
+  },
   'downward-grey': {
     core: '#babac0',
     mid: '#6b6670',
     halo: 'rgba(107,102,112,0.55)',
+  },
+  black: {
+    // The wisp that circles back. Almost-black with a faint violet edge.
+    core: '#3a2a4a',
+    mid: '#1a0e2b',
+    halo: 'rgba(20,14,30,0.7)',
+  },
+  silent: {
+    // Defensive entry — Wisp.tsx skips rendering on silent paths, but the
+    // type system still requires a record entry.
+    core: 'transparent',
+    mid: 'transparent',
+    halo: 'transparent',
   },
 };
 

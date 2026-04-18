@@ -5,8 +5,48 @@ import { CurrencyChip } from '../components/CurrencyChip';
 import { ChevronLeft, LockIcon } from '../assets/Icons';
 import { IngredientSvg, INGREDIENT_NAMES, INGREDIENT_ORDER } from '../assets/Ingredients';
 import { useGame } from '../game/store';
+import { LEVELS } from '../data/levels';
+import type { InventoryItemId } from '../game/store';
 
-const LOCKED_PLACEHOLDERS = ['?-1', '?-2'];
+const LORE_LABEL: Record<InventoryItemId, { name: string; blurb: string }> = {
+  'wren-crest-memory': {
+    name: "Wren's Crest",
+    blurb: 'Three iron barbs, no crown. Memorised through the cell window.',
+  },
+  'wall-note': {
+    name: 'The Note',
+    blurb: '"The recipe is not the product. You are." — Someone who got out.',
+  },
+  'bessie-key': {
+    name: "Bessie's Key",
+    blurb: 'Dark metal, the wrong shape for your lock. It opens something else.',
+  },
+};
+
+// Three party-roster sketches — locked in Act One but visible so players
+// can see who they will play in later chapters. Names + lore from the
+// design bible character map; UI-style is intentionally a faded sepia
+// roster pinned next to the larder shelf.
+const PARTY_PREVIEW = [
+  {
+    id: 'aldric',
+    name: 'Aldric Vane',
+    role: 'The Vowed · Through the Wall',
+    blurb: 'He let her go when ordered to arrest her. He thinks he failed her.',
+  },
+  {
+    id: 'cael',
+    name: 'Cael Driftmore',
+    role: 'The Unbound · The Moth Chose Him',
+    blurb: 'He passes through walls. He carries the Architect\'s survival instinct without knowing it.',
+  },
+  {
+    id: 'petra',
+    name: 'Petra Voss',
+    role: 'The Written · Ink Companion',
+    blurb: 'She carries the Architect\'s last letter — written before they became the Architect.',
+  },
+] as const;
 
 export function LarderStub() {
   const coins = useGame((s) => s.coins);
@@ -14,7 +54,12 @@ export function LarderStub() {
   const setScreen = useGame((s) => s.setScreen);
   const startLevel = useGame((s) => s.startLevel);
   const highestLevelCleared = useGame((s) => s.highestLevelCleared);
+  const inventory = useGame((s) => s.inventory);
+  const bessieAlly = useGame((s) => s.bessieAllyActive);
+  const hasPocketedUnknown = useGame((s) => s.hasPocketedUnknown);
   const canReplayChapter = highestLevelCleared >= 1;
+  const finishedAct = highestLevelCleared >= LEVELS.length;
+  const inventoryItems = inventory.map((id) => ({ id, ...LORE_LABEL[id] }));
 
   return (
     <Frame>
@@ -38,10 +83,59 @@ export function LarderStub() {
           <div className="text-center mb-4">
             <h2 className="font-headline italic text-2xl text-secondary">The Larder</h2>
             <p className="font-body italic text-[11px] text-on-surface-variant mt-0.5">
-              What Mira kept on the corner shelf.
+              {finishedAct
+                ? 'What Mira kept. What she will carry through the floor.'
+                : 'What Mira kept on the corner shelf.'}
             </p>
           </div>
 
+          {/* Lore items earned during play — surfaced as small chalk cards */}
+          {inventoryItems.length > 0 && (
+            <section className="mb-5">
+              <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant/80 mb-2">
+                Kept · Lore
+              </p>
+              <div className="space-y-2">
+                {inventoryItems.map((item) => (
+                  <article
+                    key={item.id}
+                    className="chalk-panel rounded-sm p-3 border-[0.5px] border-secondary/25"
+                  >
+                    <p className="font-headline italic text-secondary text-sm">{item.name}</p>
+                    <p className="font-body italic text-[11px] text-on-surface-variant mt-0.5 leading-snug">
+                      {item.blurb}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Ally + secret status — small chips that appear when earned */}
+          {(bessieAlly || hasPocketedUnknown) && (
+            <section className="mb-5">
+              <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant/80 mb-2">
+                Allies · Secrets
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {bessieAlly && (
+                  <span className="rounded-sm border-[0.5px] border-tertiary/40 bg-tertiary-container/30 text-tertiary px-2 py-1 text-[10px] font-label uppercase tracking-[0.18em]">
+                    Bessie · Recruited
+                  </span>
+                )}
+                {hasPocketedUnknown && (
+                  <span className="rounded-sm border-[0.5px] border-outline/40 bg-surface-container/40 text-on-surface-variant px-2 py-1 text-[10px] font-label uppercase tracking-[0.18em]">
+                    Unknown · Pocketed
+                  </span>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Reagent shelf — what Mira recognises by Chapter Two */}
+          <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant/80 mb-2">
+            Reagents
+          </p>
           <div className="grid grid-cols-2 gap-3">
             {INGREDIENT_ORDER.map((k) => (
               <article key={k} className="chalk-panel rounded-md p-3 flex flex-col items-center gap-2">
@@ -54,32 +148,44 @@ export function LarderStub() {
                 </p>
               </article>
             ))}
-
-            {LOCKED_PLACEHOLDERS.map((k) => (
-              <article
-                key={k}
-                className="rounded-md p-3 flex flex-col items-center gap-2 border-[0.5px] border-outline-variant/20 bg-surface-container-lowest opacity-70"
-              >
-                <div className="w-full aspect-square rounded-sm flex items-center justify-center bg-surface-container-lowest">
-                  <LockIcon size={34} className="text-outline" />
-                </div>
-                <p className="font-headline text-sm text-on-surface-variant">???</p>
-                <p className="font-label text-[9px] uppercase tracking-widest text-outline">
-                  Requires Cell 5
-                </p>
-              </article>
-            ))}
           </div>
+
+          {/* Party preview — Aldric / Cael / Petra. Unlocked in later acts. */}
+          <section className="mt-6">
+            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant/80 mb-2">
+              The Roster · Sealed
+            </p>
+            <div className="space-y-2">
+              {PARTY_PREVIEW.map((p) => (
+                <article
+                  key={p.id}
+                  className="rounded-sm p-3 border-[0.5px] border-outline/20 bg-surface-container-low/50 flex items-start gap-3"
+                >
+                  <div className="shrink-0 w-10 h-10 rounded-sm bg-surface-container-lowest flex items-center justify-center border-[0.5px] border-outline-variant/30">
+                    <LockIcon size={18} className="text-outline" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-headline text-sm text-on-surface-variant">{p.name}</p>
+                    <p className="font-label text-[9px] uppercase tracking-[0.18em] text-outline mt-0.5">
+                      {p.role}
+                    </p>
+                    <p className="font-body italic text-[11px] text-on-surface-variant/85 mt-1 leading-snug">
+                      {p.blurb}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
 
           <div className="mt-6 chalk-panel rounded-md p-4 text-center">
             <p className="font-headline italic text-secondary text-base">
-              Chapter One continues in v0.2.
+              {finishedAct ? 'Chapter One closed. The floor is waiting.' : 'Chapter One continues.'}
             </p>
             <p className="font-body italic text-[11px] text-on-surface-variant mt-2 leading-relaxed">
-              Aldric has begun speaking through the wall. Bessie has dropped
-              a bag outside your door. Somewhere, the Architect is adjusting
-              a recipe. None of it is ready yet — but your first wisp has
-              already gone where wisps go.
+              {finishedAct
+                ? 'The seam in the brewing chamber rose a centimetre. Aldric has a key to the first lock. The Second Ward is below, and they don\'t send people there — they send failed experiments.'
+                : 'Aldric speaks through the wall. Bessie drops bags outside your door. Somewhere, the Architect adjusts your next recipe.'}
             </p>
           </div>
         </main>

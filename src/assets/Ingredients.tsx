@@ -1,7 +1,11 @@
-// Hand-drawn ingredient SVGs for Act One, Chapter One, Levels 1–3.
-//   L1: Moonbloom, Ashroot, Coldstone, Emberpetal.
-//   L2 adds: Darkspore.
-//   L3 adds: Silvermoss.
+// Hand-drawn ingredient SVGs for Act One, Chapter One.
+// Order of introduction:
+//   L1: Moonbloom, Ashroot, Coldstone, Emberpetal
+//   L2: Darkspore
+//   L3: Silvermoss
+//   L5: Unknown (delivered mid-level by Smudge)
+//   L6: Hollowroot
+//   L7: Greystone
 // Every asset is asymmetric — petals lean, facets mismatch, eye gleams use
 // ellipses (no perfect circles per visual-direction rule).
 // `noFilter` skips the expensive ink-grain feTurbulence at small sizes;
@@ -182,6 +186,59 @@ function Hollowroot({ className, size = 44, dim, noFilter }: Props) {
   );
 }
 
+// Greystone — introduced Level 7. Per Doc: "warm grey; associated with
+// Aldric's cell." A weather-rounded river stone with a single warm
+// fissure where the ink-line cracks open. Unlike Coldstone (cold blue
+// facets) and Hollowroot (cavity), Greystone is solid, smooth, and
+// reads as something hand-passed-over for years.
+function Greystone({ className, size = 44, dim, noFilter }: Props) {
+  const useFilter = !noFilter && size >= FILTER_SIZE_THRESHOLD;
+  return (
+    <InkSvg size={size} viewBox="0 0 64 64" className={className} style={{ opacity: dim ? 0.4 : 1 }}>
+      <g filter={useFilter ? 'url(#ink-grain)' : undefined}>
+        {/* halo — warm-grey, slightly amber */}
+        <ellipse cx="32" cy="36" rx="20" ry="16" fill="#9a8a7a" opacity="0.22" />
+        {/* main body — squat, river-rounded, slightly tilted right */}
+        <path
+          d="M14 34 C 14 24, 22 16, 32 16 C 44 16, 52 24, 50 38 C 48 50, 36 54, 26 50 C 18 46, 14 42, 14 34 Z"
+          fill="#5a544c"
+          stroke="#1c1c19"
+          strokeWidth="0.8"
+        />
+        {/* worn highlight — a long pale curve along the upper edge */}
+        <path
+          d="M20 26 C 26 20, 36 20, 44 26"
+          stroke="#8a8278"
+          strokeWidth="1.4"
+          fill="none"
+          strokeLinecap="round"
+          opacity="0.85"
+        />
+        {/* warm fissure — the ink-crack split, faint amber inside */}
+        <path
+          d="M28 22 C 30 30, 28 38, 32 46"
+          stroke="#0e0e0c"
+          strokeWidth="1.2"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <path
+          d="M28 22 C 30 30, 28 38, 32 46"
+          stroke="#ffd799"
+          strokeWidth="0.5"
+          fill="none"
+          strokeLinecap="round"
+          opacity="0.5"
+        />
+        {/* secondary surface scratch — the wear of Aldric's thumb */}
+        <path d="M38 32 L 44 36" stroke="#3a342c" strokeWidth="0.7" strokeLinecap="round" opacity="0.7" />
+        {/* base shadow */}
+        <ellipse cx="32" cy="50" rx="14" ry="2.4" fill="#0e0e0c" opacity="0.45" />
+      </g>
+    </InkSvg>
+  );
+}
+
 // Unknown — introduced Level 5 by Smudge. A grey-silver shard with no clear
 // form — Mira's recognition fails, and the player's should too. Visually
 // unlike every other ingredient: angular instead of organic, faint
@@ -223,6 +280,7 @@ export function IngredientSvg({ id, className, size, dim, noFilter }: Props & { 
     case 'darkspore': return <Darkspore className={className} size={size} dim={dim} noFilter={noFilter} />;
     case 'silvermoss': return <Silvermoss className={className} size={size} dim={dim} noFilter={noFilter} />;
     case 'hollowroot': return <Hollowroot className={className} size={size} dim={dim} noFilter={noFilter} />;
+    case 'greystone': return <Greystone className={className} size={size} dim={dim} noFilter={noFilter} />;
     case 'unknown': return <Unknown className={className} size={size} dim={dim} noFilter={noFilter} />;
   }
 }
@@ -235,9 +293,10 @@ export const INGREDIENT_NAMES: Record<IngredientId, string> = {
   darkspore: 'Darkspore',
   silvermoss: 'Silvermoss',
   hollowroot: 'Hollowroot',
+  greystone: 'Greystone',
   unknown: 'Unknown',
 };
 
 export const INGREDIENT_ORDER: IngredientId[] = [
-  'moonbloom', 'ashroot', 'coldstone', 'emberpetal', 'darkspore', 'silvermoss', 'hollowroot',
+  'moonbloom', 'ashroot', 'coldstone', 'emberpetal', 'darkspore', 'silvermoss', 'hollowroot', 'greystone',
 ];
