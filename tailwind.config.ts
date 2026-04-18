@@ -107,6 +107,14 @@ export default {
           '50%': { opacity: '0.55' },
           '53%': { opacity: '0.9' },
         },
+        'cue-pulse': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(0, 223, 193, 0)' },
+          '50%': { boxShadow: '0 0 0 4px rgba(0, 223, 193, 0.35)' },
+        },
+        'cauldron-cue': {
+          '0%, 100%': { transform: 'scale(1)', filter: 'drop-shadow(0 0 0 rgba(0,223,193,0))' },
+          '50%': { transform: 'scale(1.04)', filter: 'drop-shadow(0 0 8px rgba(0,223,193,0.55))' },
+        },
       },
       animation: {
         'fungal-pulse': 'fungal-pulse 4s ease-in-out infinite',
@@ -114,6 +122,8 @@ export default {
         'breathe': 'breathe 4.2s ease-in-out infinite',
         'drip': 'drip 3s ease-in infinite',
         'ink-flicker': 'ink-flicker 6s ease-in-out infinite',
+        'cue-pulse': 'cue-pulse 1.6s ease-in-out infinite',
+        'cauldron-cue': 'cauldron-cue 1.8s ease-in-out infinite',
       },
     },
   },

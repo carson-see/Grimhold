@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Frame } from '../components/Frame';
 import { HudBar } from '../components/TopBar';
 import { CellBackdrop } from '../components/CellBackdrop';
+import { TutorialOverlay } from '../components/TutorialOverlay';
 import { MiraBust } from '../assets/MiraSmudge';
 import { Cauldron } from '../assets/Cauldron';
 import { IngredientSvg, INGREDIENT_NAMES } from '../assets/Ingredients';
@@ -23,12 +24,22 @@ export function LevelScreen() {
   const setScreen = useGame((s) => s.setScreen);
   const resetLevel = useGame((s) => s.resetLevel);
   const name = useGame((s) => s.name);
+  const tutorialSeen = useGame((s) => s.tutorialSeen);
+  const markTutorialSeen = useGame((s) => s.markTutorialSeen);
 
+  const [tutorialOpen, setTutorialOpen] = useState(!tutorialSeen);
   const movesRemaining = level.moveLimit - movesUsed;
-  const recipe = level.wallRecipe;
+  // v0 ships only Level 1, which has a single recipe path. L2/L3 multi-path
+  // UI (slid paper, joint highlight) lands when those screens are wired.
+  const recipe = level.recipes[0].placement;
   const [pulseCauldron, setPulseCauldron] = useState<CauldronId | null>(null);
   const pulseTimerRef = useRef<number | undefined>(undefined);
   const transitionTimerRef = useRef<number | undefined>(undefined);
+
+  const dismissTutorial = () => {
+    setTutorialOpen(false);
+    markTutorialSeen();
+  };
 
   // When the store flips `completed` to true, hold one beat then advance.
   useEffect(() => {
@@ -73,8 +84,8 @@ export function LevelScreen() {
               {level.title}
             </h2>
             <div className="grid grid-cols-2 gap-2 mt-2 font-body text-xs text-on-surface/85">
-              <RecipeLine cauldron="left" items={recipe.left} />
-              <RecipeLine cauldron="right" items={recipe.right} />
+              <RecipeLine cauldron="left" items={recipe.left ?? []} />
+              <RecipeLine cauldron="right" items={recipe.right ?? []} />
             </div>
           </div>
         </div>
@@ -82,10 +93,11 @@ export function LevelScreen() {
         <div className="px-4 mt-2">
           <div className="grid grid-cols-2 gap-3">
             {level.cauldrons.map((cid) => {
-              const state = cauldronStatus(ingredients, cid, recipe);
+              const state = cauldronStatus(ingredients, cid, level);
               const placed = ingredients.filter((i) => i.placedIn === cid);
               const isPulsing = pulseCauldron === cid;
               const tapDisabled = completed || !selectedIngredientId;
+              const cueing = !!selectedIngredientId && !completed && state !== 'correct';
               const labelText = cid === 'left' ? 'Left' : 'Right';
               return (
                 <div
@@ -119,7 +131,7 @@ export function LevelScreen() {
                     aria-disabled={tapDisabled}
                     className="flex flex-col items-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-sm"
                   >
-                    <div className={`transition-transform ${isPulsing ? 'scale-105' : ''}`}>
+                    <div className={`transition-transform ${isPulsing ? 'scale-105' : ''} ${cueing ? 'animate-cauldron-cue' : ''}`}>
                       <Cauldron size={104} tint={state} glowing={selectedIngredientId !== null || state === 'correct'} />
                     </div>
                     <p className="font-label text-[10px] uppercase tracking-[0.22em] text-on-surface-variant mt-1">
@@ -160,8 +172,11 @@ export function LevelScreen() {
             </p>
             <div className="grid grid-cols-3 gap-2">
               <AnimatePresence>
-                {trayIngredients.map((ing) => {
+                {trayIngredients.map((ing, idx) => {
                   const isSelected = selectedIngredientId === ing.id;
+                  // Pulse only the first untapped ingredient — the cue
+                  // disappears once the player has selected anything.
+                  const isCueing = !selectedIngredientId && !completed && idx === 0;
                   return (
                     <motion.button
                       key={ing.id}
@@ -178,6 +193,7 @@ export function LevelScreen() {
                         isSelected
                           ? 'bg-tertiary-container border-tertiary shadow-[0_0_14px_rgba(210,188,250,0.35)]'
                           : 'bg-surface-container-highest/70 border-outline/20 hover:border-primary/40',
+                        isCueing ? 'animate-cue-pulse' : '',
                       ].join(' ')}
                     >
                       <IngredientSvg id={ing.kind} size={40} />
@@ -220,6 +236,10 @@ export function LevelScreen() {
             <MenuIcon />
           </button>
         </div>
+
+        <AnimatePresence>
+          {tutorialOpen && <TutorialOverlay onDismiss={dismissTutorial} />}
+        </AnimatePresence>
       </div>
     </Frame>
   );

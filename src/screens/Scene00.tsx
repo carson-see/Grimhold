@@ -7,12 +7,11 @@ import { useGame } from '../game/store';
 import { playMusicBoxNote } from '../game/audio';
 
 // Scene 00 — "The First Dark"
-// Black → fungus glow → cell assembles → Mira sits up. ~3s total.
-// Plays a single off-key music-box note partway through. Auto-advances.
-// Skip surfaces fast on replay.
+// Black → fungus glow → cell assembles → Mira sits up → music-box note → hold.
+// ~3.8s total. Auto-advances. Skip surfaces at 800ms on replay.
 
-const TOTAL_MS = 2800;
-const NOTE_DELAY_MS = 1400;
+const TOTAL_MS = 3800;
+const NOTE_DELAY_MS = 1900;
 
 export function Scene00() {
   const setScreen = useGame((s) => s.setScreen);
@@ -35,12 +34,12 @@ export function Scene00() {
       return;
     }
     const noteTimer = window.setTimeout(
-      () => playMusicBoxNote({ freq: 523.25, detuneCents: -22, durationMs: 1800, gain: 0.14 }),
+      () => playMusicBoxNote({ freq: 523.25, detuneCents: -22, durationMs: 2200, gain: 0.14 }),
       NOTE_DELAY_MS,
     );
     const advanceTimer = window.setTimeout(advance, TOTAL_MS);
     const skipTimer = hasSeenOpening
-      ? window.setTimeout(() => setCanSkip(true), 600)
+      ? window.setTimeout(() => setCanSkip(true), 800)
       : undefined;
     return () => {
       clearTimeout(noteTimer);
@@ -57,7 +56,7 @@ export function Scene00() {
           className="absolute inset-0"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: reduce ? 0 : 0.6, ease: 'easeOut' }}
+          transition={{ duration: reduce ? 0 : 0.9, ease: 'easeOut' }}
         >
           <div className="absolute -top-20 -left-24 w-80 h-80 rounded-full bg-primary/20 blur-[90px]" />
           <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-primary/10 blur-[120px]" />
@@ -67,7 +66,7 @@ export function Scene00() {
           className="absolute inset-0"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: reduce ? 0 : 0.6, delay: reduce ? 0 : 0.5 }}
+          transition={{ duration: reduce ? 0 : 0.8, delay: reduce ? 0 : 0.7 }}
         >
           <CellBackdrop />
         </motion.div>
@@ -76,7 +75,7 @@ export function Scene00() {
           className="absolute inset-0 flex items-end justify-center pb-20"
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 0.9, y: 0 }}
-          transition={{ duration: reduce ? 0 : 0.7, delay: reduce ? 0 : 1.0 }}
+          transition={{ duration: reduce ? 0 : 0.9, delay: reduce ? 0 : 1.4 }}
         >
           <div className="animate-breathe">
             <MiraSmudge size={240} />
@@ -87,7 +86,7 @@ export function Scene00() {
           className="absolute bottom-8 left-0 right-0 text-center font-body italic text-xs text-on-surface/55 tracking-wide"
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.6 }}
-          transition={{ delay: reduce ? 0 : 1.6, duration: reduce ? 0 : 0.6 }}
+          transition={{ delay: reduce ? 0 : 1.6, duration: reduce ? 0 : 0.7 }}
         >
           somewhere, water drips
         </motion.p>

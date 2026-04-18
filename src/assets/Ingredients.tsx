@@ -1,5 +1,7 @@
-// Hand-drawn ingredient SVGs. The Level Document fixes 4 ingredients for
-// Level 1: Moonbloom, Ashroot, Coldstone, Emberpetal.
+// Hand-drawn ingredient SVGs for Act One, Chapter One, Levels 1–3.
+//   L1: Moonbloom, Ashroot, Coldstone, Emberpetal.
+//   L2 adds: Darkspore.
+//   L3 adds: Silvermoss.
 // Every asset is asymmetric — petals lean, facets mismatch, eye gleams use
 // ellipses (no perfect circles per visual-direction rule).
 // `noFilter` skips the expensive ink-grain feTurbulence at small sizes;
@@ -83,12 +85,77 @@ function Emberpetal({ className, size = 44, dim, noFilter }: Props) {
   );
 }
 
+// DARKSPORE — near-black seedpod, mottled, splits open at the top with a
+// ring of fine spores leaking sideways. Introduced Level 2 per the doc.
+function Darkspore({ className, size = 44, dim, noFilter }: Props) {
+  const useFilter = !noFilter && size >= FILTER_SIZE_THRESHOLD;
+  return (
+    <InkSvg size={size} viewBox="0 0 64 64" className={className} style={{ opacity: dim ? 0.4 : 1 }}>
+      <g filter={useFilter ? 'url(#ink-grain)' : undefined}>
+        {/* faint dark halo */}
+        <ellipse cx="32" cy="36" rx="20" ry="16" fill="#2d1b4e" opacity="0.35" />
+        {/* main pod — ovoid, leaning slightly */}
+        <path
+          d="M22 14 C 14 22, 14 42, 22 52 C 30 58, 40 56, 46 50 C 52 40, 50 22, 42 14 C 34 10, 28 10, 22 14 Z"
+          fill="#0e0e0c"
+          stroke="#2a2a27"
+          strokeWidth="0.8"
+        />
+        {/* split seam down the front */}
+        <path d="M32 12 C 30 24, 34 36, 32 52" stroke="#1c1c19" strokeWidth="1.2" fill="none" />
+        {/* spore puff at the crown */}
+        <ellipse cx="32" cy="14" rx="6" ry="2.4" fill="#3a2a1a" opacity="0.7" />
+        <ellipse cx="38" cy="11" rx="1.2" ry="0.8" fill="#5a4430" opacity="0.6" />
+        <ellipse cx="26" cy="11" rx="1" ry="0.7" fill="#5a4430" opacity="0.55" />
+        <ellipse cx="44" cy="9" rx="0.8" ry="0.5" fill="#6b5a49" opacity="0.5" />
+        {/* dim violet flecks — the only color */}
+        <ellipse cx="28" cy="32" rx="1.4" ry="1.1" fill="#4f3d72" opacity="0.7" />
+        <ellipse cx="38" cy="40" rx="1.1" ry="0.9" fill="#4f3d72" opacity="0.6" />
+      </g>
+    </InkSvg>
+  );
+}
+
+// SILVERMOSS — silver-green moss tendrils splayed asymmetrically, a few
+// hanging strands. Introduced Level 2 per the doc.
+function Silvermoss({ className, size = 44, dim, noFilter }: Props) {
+  const useFilter = !noFilter && size >= FILTER_SIZE_THRESHOLD;
+  return (
+    <InkSvg size={size} viewBox="0 0 64 64" className={className} style={{ opacity: dim ? 0.4 : 1 }}>
+      <g filter={useFilter ? 'url(#ink-grain)' : undefined}>
+        {/* halo */}
+        <ellipse cx="32" cy="34" rx="22" ry="18" fill="#a8c5b8" opacity="0.18" />
+        {/* central clump */}
+        <path
+          d="M16 34 C 14 22, 22 16, 32 16 C 44 16, 50 24, 48 36 C 46 46, 36 50, 28 48 C 20 46, 16 42, 16 34 Z"
+          fill="#7a9a8a"
+          stroke="#3a4a42"
+          strokeWidth="0.8"
+        />
+        {/* moss tufts */}
+        <path d="M22 22 C 26 18, 30 18, 32 22" stroke="#a8c5b8" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+        <path d="M36 20 C 40 22, 42 26, 42 28" stroke="#a8c5b8" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+        <path d="M20 38 C 22 42, 24 44, 28 46" stroke="#a8c5b8" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+        <path d="M40 40 C 44 38, 46 36, 48 34" stroke="#a8c5b8" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+        {/* hanging strands */}
+        <path d="M22 48 L 20 56" stroke="#7a9a8a" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M30 50 L 30 58" stroke="#7a9a8a" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M40 48 L 42 56" stroke="#7a9a8a" strokeWidth="1.6" strokeLinecap="round" />
+        {/* a single silver-bright spore */}
+        <ellipse cx="34" cy="30" rx="1.6" ry="1.4" fill="#cbe7d5" />
+      </g>
+    </InkSvg>
+  );
+}
+
 export function IngredientSvg({ id, className, size, dim, noFilter }: Props & { id: IngredientId }) {
   switch (id) {
     case 'moonbloom': return <Moonbloom className={className} size={size} dim={dim} noFilter={noFilter} />;
     case 'ashroot': return <Ashroot className={className} size={size} dim={dim} noFilter={noFilter} />;
     case 'coldstone': return <Coldstone className={className} size={size} dim={dim} noFilter={noFilter} />;
     case 'emberpetal': return <Emberpetal className={className} size={size} dim={dim} noFilter={noFilter} />;
+    case 'darkspore': return <Darkspore className={className} size={size} dim={dim} noFilter={noFilter} />;
+    case 'silvermoss': return <Silvermoss className={className} size={size} dim={dim} noFilter={noFilter} />;
   }
 }
 
@@ -97,6 +164,10 @@ export const INGREDIENT_NAMES: Record<IngredientId, string> = {
   ashroot: 'Ashroot',
   coldstone: 'Coldstone',
   emberpetal: 'Emberpetal',
+  darkspore: 'Darkspore',
+  silvermoss: 'Silvermoss',
 };
 
-export const INGREDIENT_ORDER: IngredientId[] = ['moonbloom', 'ashroot', 'coldstone', 'emberpetal'];
+export const INGREDIENT_ORDER: IngredientId[] = [
+  'moonbloom', 'ashroot', 'coldstone', 'emberpetal', 'darkspore', 'silvermoss',
+];

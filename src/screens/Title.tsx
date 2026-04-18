@@ -19,7 +19,7 @@ export function TitleScreen() {
   const fade = (delay: number) =>
     reduce
       ? { initial: { opacity: 1 }, animate: { opacity: 1 }, transition: { duration: 0 } }
-      : { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { delay, duration: 1.4 } };
+      : { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { delay, duration: 1.0 } };
 
   return (
     <Frame>
@@ -40,17 +40,11 @@ export function TitleScreen() {
           >
             Grimhold
           </motion.h1>
-          <motion.p
-            className="mt-4 text-on-surface-variant italic text-sm max-w-[260px] mx-auto leading-relaxed"
-            {...fade(1.2)}
-          >
-            The recipe is not the product. You are.
-          </motion.p>
           <motion.div
             className="mx-auto mt-5"
             initial={reduce ? { scaleX: 1 } : { scaleX: 0 }}
             animate={{ scaleX: 1 }}
-            transition={{ delay: reduce ? 0 : 1.6, duration: reduce ? 0 : 1.4 }}
+            transition={{ delay: reduce ? 0 : 1.0, duration: reduce ? 0 : 1.2 }}
           >
             <InkDivider tone="primary" />
           </motion.div>
@@ -68,7 +62,7 @@ export function TitleScreen() {
         <motion.button
           className="btn-descend w-full max-w-xs mt-6"
           onClick={begin}
-          {...fade(2.2)}
+          {...fade(1.6)}
           aria-label={hasSeenOpening ? 'Continue' : 'Begin the Descent'}
         >
           {hasSeenOpening ? 'Continue' : 'Begin the Descent'}

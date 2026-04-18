@@ -49,7 +49,7 @@ export function LevelComplete() {
           <Wisp size={50} color="violet" />
         </div>
         <div className="absolute right-[16%] bottom-0 animate-wisp-rise" style={{ animationDelay: '3s' }}>
-          <Wisp size={60} color="amber" />
+          <Wisp size={60} color="amber-threaded" />
         </div>
       </div>
 

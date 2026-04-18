@@ -1,14 +1,34 @@
 import { InkSvg, useAllowMotion } from './Ink';
+import type { WispColor } from '../game/types';
 
-type Props = { className?: string; size?: number; color?: 'violet' | 'amber' };
+type Props = { className?: string; size?: number; color?: WispColor };
 
-const PALETTE = {
+// Four colors through the act — per Level Doc:
+//   violet         → standard wall-recipe clear (L1, L2 wall)
+//   amber-threaded → slid-recipe clear (L2 slid)
+//   violet-amber   → encounter-perturbed wisp (L3, Bessie present)
+//   amber          → reserved for pure human-made wisps; used as ambient
+//                    drifting in LevelComplete backgrounds
+const PALETTE: Record<WispColor | 'amber', { core: string; mid: string; halo: string; thread?: string }> = {
   violet: { core: '#d2bcfa', mid: '#9783bd', halo: 'rgba(210,188,250,0.55)' },
+  'amber-threaded': {
+    core: '#d2bcfa',
+    mid: '#9783bd',
+    halo: 'rgba(210,188,250,0.5)',
+    thread: '#ffd799',
+  },
+  'violet-amber': {
+    core: '#e4d5fb',
+    mid: '#b8a7de',
+    halo: 'rgba(255,215,153,0.35)',
+    thread: '#ffba38',
+  },
   amber: { core: '#ffd799', mid: '#ffba38', halo: 'rgba(255,215,153,0.55)' },
-} as const;
+};
 
 export function Wisp({ className, size = 120, color = 'violet' }: Props) {
-  const { core, mid, halo } = PALETTE[color];
+  const palette = PALETTE[color as keyof typeof PALETTE] ?? PALETTE.violet;
+  const { core, mid, halo, thread } = palette;
   const allowMotion = useAllowMotion();
 
   return (
@@ -37,6 +57,24 @@ export function Wisp({ className, size = 120, color = 'violet' }: Props) {
         )}
       </path>
       <path d="M60 40 C 50 66, 50 96, 60 116 C 70 98, 72 68, 60 40 Z" fill={core} opacity="0.85" />
+
+      {/* Amber thread — drawn only for dual-color wisps. A slender ribbon
+          winding through the violet body, slowly animating its opacity. */}
+      {thread && (
+        <path
+          d="M58 40 C 64 58, 52 76, 62 96 C 70 110, 56 124, 60 138"
+          stroke={thread}
+          strokeWidth="2.4"
+          fill="none"
+          strokeLinecap="round"
+          opacity="0.75"
+        >
+          {allowMotion && (
+            <animate attributeName="opacity" values="0.4;0.85;0.4" dur="4.4s" repeatCount="indefinite" />
+          )}
+        </path>
+      )}
+
       <ellipse cx="60" cy="148" rx="2.6" ry="2.2" fill={core} opacity="0.8">
         {allowMotion && (
           <animate attributeName="opacity" values="0.8;0.2;0.8" dur="2s" repeatCount="indefinite" />

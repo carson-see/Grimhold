@@ -18,7 +18,7 @@ export function Scene01() {
   const timer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    timer.current = window.setTimeout(() => setCanAdvance(true), reduce ? 800 : 2800);
+    timer.current = window.setTimeout(() => setCanAdvance(true), reduce ? 1000 : 4200);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
@@ -37,7 +37,7 @@ export function Scene01() {
         <motion.div
           initial={reduce ? { y: 0, opacity: 0.92 } : { y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 0.92 }}
-          transition={{ duration: reduce ? 0 : 0.7 }}
+          transition={{ duration: reduce ? 0 : 1.1 }}
         >
           <MiraReaching size={230} />
         </motion.div>
@@ -47,7 +47,7 @@ export function Scene01() {
           aria-hidden="true"
           initial={{ x: -60, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: reduce ? 0.4 : 1.6, duration: reduce ? 0.3 : 0.6, ease: 'easeOut' }}
+          transition={{ delay: reduce ? 0.5 : 2.6, duration: reduce ? 0.3 : 0.8, ease: 'easeOut' }}
           style={{
             backgroundImage: 'linear-gradient(180deg, #e5e2dd 0%, #c9c5bc 100%)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.6), inset 0 0 4px rgba(0,0,0,0.15)',
@@ -59,7 +59,7 @@ export function Scene01() {
           className="absolute top-[40%] left-0 right-0 text-center font-body italic text-sm text-on-surface/80 px-10"
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 1] }}
-          transition={{ delay: reduce ? 0.3 : 2.0, duration: reduce ? 0.5 : 0.7 }}
+          transition={{ delay: reduce ? 0.4 : 3.2, duration: reduce ? 0.5 : 0.9 }}
         >
           Her fingers stopped six inches short of the grate.
         </motion.p>
