@@ -1,4 +1,5 @@
 import type { CauldronId, EncounterConfig, LevelConfig, RecipePath } from '../game/types';
+import { withHiddenAlternates } from './altRecipes';
 
 // Shared cauldron labels — kept here so every surface (puzzle HUD, recipe
 // panels, transition scenes, level-complete card) agrees on spelling.
@@ -239,7 +240,11 @@ export const LEVEL_4: LevelConfig = {
   },
   memoryVision: {
     triggerMove: 8,
-    durationMs: 3200,
+    // Per Designer Notes: "should feel like a glitch, not a cutscene —
+    // something the cauldron did that the dungeon didn't intend." 2200ms
+    // is long enough to see the moth; short enough the player isn't
+    // sure what they saw.
+    durationMs: 2200,
     initials: 'M.J.M.',
   },
   closingLine:
@@ -353,16 +358,22 @@ export const LEVEL_6: LevelConfig = {
       powerUpDetail: 'The Architect is paying attention — and so are you.',
     },
   ],
-  moveLimit: 20,
-  targetMoves: 14,
-  acceptableMoves: 17,
+  // Playtest 2026-04-18: 20-move budget with C-Left overheat at move 5
+  // and Hollowroot volatility every 4 moves was unwinnable — the player
+  // had no slack for any wrong placement or any volatile shift. Bumped
+  // budget to 24 moves, deadline to 8, and slowed Hollowroot drift to
+  // every 5 moves so a player who notices the warning has a chance to
+  // react.
+  moveLimit: 24,
+  targetMoves: 16,
+  acceptableMoves: 20,
   volatility: {
     kinds: ['hollowroot'],
-    shiftEveryMoves: 4,
+    shiftEveryMoves: 5,
   },
   timeSensitive: {
     cauldron: 'center-left',
-    fillByMove: 5,
+    fillByMove: 8,
   },
   architectVoice: {
     triggerMove: 12,
@@ -622,11 +633,55 @@ export const LEVEL_9: LevelConfig = {
       powerUpLabel: '+1 Bonus Gem · Refusal Banked',
       powerUpDetail: 'The wisp circled the room and returned. The Architect: "interesting."',
     },
+    // Pocketed-Unknown chain — only reachable if the player kept the L5
+    // Unknown. Both place the Unknown in left (mirroring L5's downward
+    // wisp) on top of a compliant or refusal sort.
+    {
+      id: 'downward',
+      label: 'Pocketed Unknown · into the left cauldron',
+      handwriting: 'unwritten',
+      placement: {
+        left: ['moonbloom', 'moonbloom', 'emberpetal', 'unknown'],
+        'center-left': ['ashroot', 'ashroot', 'silvermoss'],
+        'center-right': ['coldstone', 'coldstone', 'greystone', 'darkspore'],
+        right: ['emberpetal', 'darkspore', 'silvermoss', 'hollowroot'],
+      },
+      wispColor: 'downward-grey',
+      powerUpLabel: '+2 Bonus Gems · Off-Ledger',
+      powerUpDetail:
+        'A grey wisp went down through the floor. The Architect cannot account for it.',
+    },
+    {
+      id: 'silent',
+      label: 'Refusal · plus the Unknown · max denial',
+      handwriting: 'unwritten',
+      placement: {
+        left: ['emberpetal', 'darkspore', 'silvermoss', 'hollowroot', 'unknown'],
+        'center-left': ['coldstone', 'coldstone', 'greystone', 'darkspore'],
+        'center-right': ['ashroot', 'ashroot', 'silvermoss'],
+        right: ['moonbloom', 'moonbloom', 'emberpetal'],
+      },
+      wispColor: 'silent',
+      powerUpLabel: '+3 Bonus Gems · The Quiet Cycle',
+      powerUpDetail:
+        'No wisp at all. The grate stayed shut. The Architect heard the silence and made a note.',
+    },
   ],
   moveLimit: 22,
   targetMoves: 14,
   acceptableMoves: 18,
   blankWall: true,
+  // The pocketed Unknown from L5 is added to the L9 starting tray when
+  // hasPocketedUnknown is true. It's exempt from the "every ingredient
+  // placed" check so the non-Unknown paths (compliant / deviation /
+  // refusal) remain reachable for players who didn't pocket it.
+  chainsPocketedUnknown: true,
+  conditionalIngredient: {
+    kind: 'unknown',
+    deliverAtMove: 0, // pre-populated; deliverAtMove is unused for L9
+    downwardCauldron: 'left',
+    dissolveCauldron: 'right',
+  },
   volatility: { kinds: ['hollowroot', 'greystone'], shiftEveryMoves: 4 },
   timeSensitive: { cauldron: 'center-left', fillByMove: 7 },
   closingLine:
@@ -728,10 +783,23 @@ export const LEVEL_10: LevelConfig = {
     'Aldric: how many locks do you think there are? {name}: exactly as many as there need to be.',
 };
 
+// Each level gets the three hidden character alternates (Aldric / Cael /
+// Petra) appended. They share the level's ingredient multiset so any of
+// the four sorts (wall + 3 hidden) is a valid completion. The store's
+// `firstMatchingRecipe` already handles "joint" priority on sync; the
+// rest fall through in order, with hidden variants only winning when
+// the player's actual placement matches them exactly.
+function attachHiddenAlternates(level: LevelConfig): LevelConfig {
+  return {
+    ...level,
+    recipes: [...level.recipes, ...withHiddenAlternates(level)],
+  };
+}
+
 export const LEVELS: LevelConfig[] = [
   LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5,
   LEVEL_6, LEVEL_7, LEVEL_8, LEVEL_9, LEVEL_10,
-];
+].map(attachHiddenAlternates);
 
 export function getLevel(id: number): LevelConfig {
   return LEVELS.find((l) => l.id === id) ?? LEVEL_1;

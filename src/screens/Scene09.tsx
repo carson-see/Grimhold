@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { TransitionScene } from '../components/TransitionScene';
+import { SceneCaption } from '../components/SceneCaption';
 import { MiraSmudge } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 
@@ -66,30 +67,25 @@ export function Scene09() {
           />
         </motion.svg>
 
-        <motion.p
-          className="absolute top-[40%] left-0 right-0 text-center font-body italic text-sm text-on-surface/85 px-10"
-          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: reduce ? 0.4 : 3.2, duration: reduce ? 0 : 0.9 }}
-        >
-          {refused ? (
-            <>
-              <span className="text-tertiary not-italic">&ldquo;Interesting.&rdquo;</span>
-              <br />
-              <span className="text-[11px] text-on-surface-variant">
-                The Architect's voice. Two words, flat, through the stone.
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="text-secondary not-italic">&ldquo;I need to understand the floor.&rdquo;</span>
-              <br />
-              <span className="text-[11px] text-on-surface-variant">
-                She did not answer Aldric's question. The circle on the wall did.
-              </span>
-            </>
-          )}
-        </motion.p>
+        {refused ? (
+          <SceneCaption
+            className="bottom-28"
+            delaySec={reduce ? 0.4 : 3.2}
+            sub="The Architect's voice. Two words, flat, through the stone."
+            tone="architect"
+          >
+            &ldquo;Interesting.&rdquo;
+          </SceneCaption>
+        ) : (
+          <SceneCaption
+            className="bottom-28"
+            delaySec={reduce ? 0.4 : 3.2}
+            sub="She did not answer Aldric's question. The circle on the wall did."
+            tone="aldric"
+          >
+            &ldquo;I need to understand the floor.&rdquo;
+          </SceneCaption>
+        )}
       </div>
     </TransitionScene>
   );

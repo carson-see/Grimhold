@@ -80,12 +80,46 @@ export function LarderStub() {
         />
 
         <main className="flex-1 px-4 pt-2 pb-28 overflow-y-auto">
-          <div className="text-center mb-4">
+          <div className="text-center mb-5">
             <h2 className="font-headline italic text-2xl text-secondary">The Larder</h2>
-            <p className="font-body italic text-[11px] text-on-surface-variant mt-0.5">
+            <p className="font-body italic text-[13px] text-on-surface-variant mt-1 leading-snug max-w-[320px] mx-auto">
+              A larder is the corner of a kitchen where food is kept. This is
+              Mira's — what the dungeon hasn't taken yet.
+            </p>
+          </div>
+
+          {/* Orientation card — what coins/gems mean, and what is coming. */}
+          <section className="mb-5 chalk-panel rounded-md p-3">
+            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant/80 mb-2">
+              What you're looking at
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-sm border-[0.5px] border-secondary/30 bg-surface-container-low/50 p-2">
+                <p className="font-headline italic text-secondary text-sm leading-tight">Coins</p>
+                <p className="font-body italic text-[12px] text-on-surface-variant/90 leading-snug mt-1">
+                  Earned by brewing quickly. They'll buy ingredients and small
+                  mercies from Bessie's kitchen in v0.2.
+                </p>
+              </div>
+              <div className="rounded-sm border-[0.5px] border-tertiary/30 bg-tertiary-container/15 p-2">
+                <p className="font-headline italic text-tertiary text-sm leading-tight">Gems</p>
+                <p className="font-body italic text-[12px] text-on-surface-variant/90 leading-snug mt-1">
+                  The Architect's attention, banked. Earned for first clears
+                  and for finding alternate paths. Rare by design.
+                </p>
+              </div>
+            </div>
+            <p className="font-body italic text-[12px] text-on-surface-variant mt-2 leading-snug">
+              The shelves below show every reagent Mira recognises, lore she
+              has kept, and the four prisoners whose paths cross hers.
+            </p>
+          </section>
+
+          <div className="text-center mb-5">
+            <p className="font-body italic text-[13px] text-on-surface-variant leading-snug">
               {finishedAct
-                ? 'What Mira kept. What she will carry through the floor.'
-                : 'What Mira kept on the corner shelf.'}
+                ? 'She had learned to brew. She had learned to refuse. What she will carry through the floor.'
+                : 'Keep brewing — the larder fills as she learns.'}
             </p>
           </div>
 

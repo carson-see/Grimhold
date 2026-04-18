@@ -21,6 +21,7 @@ import { CAULDRON_LABEL } from '../data/levels';
 import { playMusicBoxNote } from '../game/audio';
 import { RecipePanel } from '../components/RecipePanel';
 import { BlankWallPanel } from '../components/BlankWallPanel';
+import { PowerupBar } from '../components/PowerupBar';
 
 export function LevelScreen() {
   const level = useGame((s) => s.level);
@@ -47,10 +48,10 @@ export function LevelScreen() {
   const noteFromWallOpen = useGame((s) => s.noteFromWall.open);
   const storeFailed = useGame((s) => s.failed);
   const reduce = useReducedMotion();
-  // Joint sync and architect voice are intentionally non-blocking — the
-  // puzzle keeps running underneath. Encounter, memory and the wall note
-  // are blocking modals.
-  const anyBlockingOverlay = encounterOpen || memoryVisionOpen || noteFromWallOpen;
+  // Only encounter and memory vision are blocking. Architect voice,
+  // joint sync, and the L8 wall note are non-blocking — the doc's
+  // emotional beat is "player keeps sorting while processing."
+  const anyBlockingOverlay = encounterOpen || memoryVisionOpen;
 
   // Tutorial only appears once, on Level 1, for the very first session.
   const [tutorialOpen, setTutorialOpen] = useState(!tutorialSeen && level.id === 1);
@@ -275,7 +276,9 @@ export function LevelScreen() {
           </div>
         </div>
 
-        <div className="px-4 pb-3 flex items-center gap-3">
+        <PowerupBar />
+
+        <div className="px-4 pb-3 mt-1 flex items-center gap-3">
           <div className="shrink-0 rounded-sm overflow-hidden border-[0.5px] border-outline/20 bg-surface-container-low p-1">
             <MiraBust size={44} />
           </div>

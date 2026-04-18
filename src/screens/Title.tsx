@@ -12,20 +12,29 @@ export function TitleScreen() {
   const hasSeenOpening = useGame((s) => s.hasSeenOpening);
   const highestLevelCleared = useGame((s) => s.highestLevelCleared);
   const startLevel = useGame((s) => s.startLevel);
+  const chapter2Start = useGame((s) => s.chapter2Start);
   const reduce = useReducedMotion();
 
   const resumeId = nextLevelId(highestLevelCleared);
-  const allCleared = hasSeenOpening && resumeId === null;
+  // Three post-L10 states on Title:
+  //   1. L10 cleared, L11 not played → resume into L11
+  //   2. L11 resolved (chapter2Start set) → Larder
+  //   3. No L10 clear yet → resume into next cauldron level
+  const l10Cleared = resumeId === null;
+  const needsCapstone = l10Cleared && !chapter2Start;
+  const allCleared = hasSeenOpening && l10Cleared && !!chapter2Start;
 
   const begin = () => {
     playMusicBoxNote({ freq: 440, detuneCents: -14, durationMs: 1800, gain: 0.12 });
     if (!hasSeenOpening) {
-      setScreen('character-select');
+      setScreen('prologue');
+      return;
+    }
+    if (needsCapstone) {
+      setScreen('level-11');
       return;
     }
     if (allCleared) {
-      // Player has already reached the end of built content — send them to
-      // the Larder stub rather than silently restarting at Level 1.
       setScreen('larder-stub');
       return;
     }
@@ -35,9 +44,11 @@ export function TitleScreen() {
 
   const ctaLabel = !hasSeenOpening
     ? 'Begin the Descent'
-    : allCleared
-      ? 'Return to the Larder'
-      : `Continue — Level ${resumeId}`;
+    : needsCapstone
+      ? 'The Door That Wasn\u2019t Locked'
+      : allCleared
+        ? 'Return to the Larder'
+        : `Continue — Level ${resumeId}`;
 
   return (
     <Frame>

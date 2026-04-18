@@ -2,15 +2,17 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Frame } from '../components/Frame';
 import { CellBackdrop } from '../components/CellBackdrop';
+import { SceneCaption } from '../components/SceneCaption';
 import { MiraSmudge } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 import { playMusicBoxNote } from '../game/audio';
 
 // Scene 00 — "The First Dark"
-// Black → fungus glow → cell assembles → Mira sits up → music-box note → hold.
-// ~3.8s total. Auto-advances. Skip surfaces at 800ms on replay.
+// Black → fungus glow → cell assembles → Mira sits up → Smudge beat → note.
+// ~6.4s total so a first-time player can read the Smudge intro caption.
+// Auto-advances. Skip surfaces at 800ms on replay.
 
-const TOTAL_MS = 3800;
+const TOTAL_MS = 6400;
 const NOTE_DELAY_MS = 1900;
 
 export function Scene00() {
@@ -84,14 +86,27 @@ export function Scene00() {
           </div>
         </motion.div>
 
-        <motion.p
-          className="absolute bottom-8 left-0 right-0 text-center font-body italic text-xs text-on-surface/55 tracking-wide"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.6 }}
-          transition={{ delay: reduce ? 0 : 1.6, duration: reduce ? 0 : 0.7 }}
-        >
-          somewhere, water drips
-        </motion.p>
+        {!hasSeenOpening && (
+          <SceneCaption
+            className="bottom-20"
+            delaySec={reduce ? 0.4 : 3.0}
+            durationSec={reduce ? 0 : 1.1}
+            sub="He was there before she woke. He is not hers. But he will not leave."
+          >
+            A raven on the rim of a warm cauldron.
+          </SceneCaption>
+        )}
+
+        {hasSeenOpening && (
+          <motion.p
+            className="absolute bottom-8 left-0 right-0 text-center font-body italic text-[13px] text-on-surface/65 tracking-wide"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.75 }}
+            transition={{ delay: reduce ? 0 : 1.6, duration: reduce ? 0 : 0.7 }}
+          >
+            somewhere, water drips
+          </motion.p>
+        )}
 
         {canSkip && (
           <button

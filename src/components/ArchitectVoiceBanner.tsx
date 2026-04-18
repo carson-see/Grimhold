@@ -44,26 +44,31 @@ export function ArchitectVoiceBanner() {
     <motion.div
       role="status"
       aria-live="polite"
-      className="absolute top-16 left-3 right-3 z-40 pointer-events-none"
-      initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: -8 }}
+      // Per Designer Notes L6: "Do not subtitle it. Players who want to
+      // replay to catch every word will do so." The banner is
+      // intentionally caption-less and low-contrast — it reads as
+      // something half-heard through stone, not dialogue UI.
+      className="absolute top-14 left-6 right-6 z-40 pointer-events-none"
+      initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
+      exit={{ opacity: 0, y: -6 }}
       transition={{ duration: reduce ? 0 : 0.6 }}
     >
-      <div className="relative rounded-sm px-3 py-2 bg-surface-container-lowest/85 border-[0.5px] border-tertiary/30 shadow-[inset_0_0_18px_rgba(45,27,78,0.55)] backdrop-blur-sm">
-        <p className="font-label text-[9px] uppercase tracking-[0.24em] text-tertiary/75">
-          Through the stone
-        </p>
-        <motion.p
-          key={idx}
-          className="font-body italic text-[12px] text-on-surface/85 mt-0.5 leading-snug"
-          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: reduce ? 0 : 0.6 }}
-        >
-          {fragments[idx]}
-        </motion.p>
-      </div>
+      <motion.p
+        key={idx}
+        className="font-body italic text-[13px] leading-[1.5] text-on-surface-variant/80 text-center"
+        style={{
+          // Muffled feel — slight blur + low-key purple shadow, no panel.
+          filter: 'blur(0.2px)',
+          textShadow: '0 0 14px rgba(45,27,78,0.55), 0 0 4px rgba(0,0,0,0.6)',
+          letterSpacing: '0.01em',
+        }}
+        initial={reduce ? { opacity: 0.85 } : { opacity: 0 }}
+        animate={{ opacity: [0, 0.85, 0.85, 0.6] }}
+        transition={{ duration: reduce ? 0 : 1.2 }}
+      >
+        {fragments[idx]}
+      </motion.p>
     </motion.div>
   );
 }

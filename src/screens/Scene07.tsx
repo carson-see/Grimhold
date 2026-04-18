@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { TransitionScene } from '../components/TransitionScene';
+import { SceneCaption } from '../components/SceneCaption';
 import { MiraSmudge } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 
@@ -67,20 +68,15 @@ export function Scene07() {
           </svg>
         </motion.div>
 
-        <motion.p
-          className="absolute top-[36%] left-0 right-0 text-center font-body italic text-sm text-on-surface/85 px-10"
-          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: reduce ? 0.4 : 2.6, duration: reduce ? 0 : 0.9 }}
+        <SceneCaption
+          className="bottom-28"
+          delaySec={reduce ? 0.4 : 2.6}
+          sub={synced
+            ? 'The brew had blended. Two cells, one rhythm. Her shoulder against the wall agreed.'
+            : 'They had not synced this time. The wall did not seem to mind.'}
         >
           She heard him settle into the same shape on the other side of the stone.
-          <br />
-          <span className="text-[11px] text-on-surface-variant">
-            {synced
-              ? 'The brew had blended. Two cells, one rhythm. Her shoulder against the wall agreed.'
-              : 'They had not synced this time. The wall did not seem to mind.'}
-          </span>
-        </motion.p>
+        </SceneCaption>
 
         {/* The grate-tap motor — three small chalk dashes near the top */}
         <motion.div

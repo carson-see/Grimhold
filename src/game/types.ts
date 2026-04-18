@@ -32,13 +32,16 @@ export type WispColor =
   | 'violet-amber'
   | 'violet-dark'
   | 'violet-strong'
-  | 'violet-grey'        // L7: Aldric synced — partly violet, partly warm grey
+  | 'violet-grey'        // L7+: Aldric synced — partly violet, partly warm grey
+  | 'violet-green'       // Cael's path — moth-touched, faintly luminous green
+  | 'violet-ink'         // Petra's path — bookish, deep blue-violet
   | 'downward-grey'
   | 'black'              // L9 deviation — circles the room, returns to cauldron
   | 'silent';            // L9 fully refused — no wisp, the dungeon receives nothing
 
 export type Screen =
   | 'title'
+  | 'prologue'
   | 'character-select'
   | 'name'
   | 'scene-00'
@@ -55,6 +58,7 @@ export type Screen =
   | 'scene-09'
   | 'scene-10'
   | 'level-complete'
+  | 'level-11'         // Capstone escape — non-cauldron choice sequence
   | 'larder-stub';
 
 export interface Ingredient {
@@ -72,7 +76,13 @@ export type RecipePathId =
   | 'downward'
   | 'compliant'
   | 'deviation'         // L9 — partial deviation, mixed wisp
-  | 'refusal';          // L9 — full deviation, black wisp / silent rise
+  | 'refusal'           // L9 — full deviation, black wisp circles back
+  | 'silent'            // L9 — refusal + pocketed Unknown, no wisp at all
+  // Per-class hidden alternates (Aldric/Cael/Petra) — every level has
+  // these as hidden discoveries that earn the alt-path coin + gem bonus.
+  | 'aldric'
+  | 'cael'
+  | 'petra';
 
 export interface RecipePath {
   id: RecipePathId;
@@ -209,6 +219,10 @@ export interface LevelConfig {
   noteFromWall?: NoteFromWallConfig;
   /** L9 — wall is intentionally blank; player navigates without a recipe HUD. */
   blankWall?: boolean;
+  /** L9 — if true AND `hasPocketedUnknown` is set, an Unknown ingredient
+      is added to the starting tray. Unlocks the 'downward' and 'silent'
+      recipe variants (pocketed-Unknown chain from L5). */
+  chainsPocketedUnknown?: boolean;
   closingLine: string;
 }
 
@@ -223,4 +237,5 @@ export interface LevelResult {
   encounterChoice?: EncounterChoiceId;
   pocketedUnknown?: boolean; // only meaningful on L5
   jointHit?: boolean;        // L7+ — true if the Aldric sync window was caught
+  altPathDiscovered?: boolean; // hidden alternate path completed for the first time
 }

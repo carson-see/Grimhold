@@ -3,19 +3,19 @@ import { useEffect } from 'react';
 import { useGame } from '../game/store';
 import { useCountdownDismiss } from './useCountdownDismiss';
 
-// Silent 3-second overlay. The cauldron stills and "shows" a scene — the
-// figure at a workbench, the moth in a glass jar. Rendered inline as
-// abstract shapes so the image implies without over-specifying. The
-// overlay is non-interactive; it dismisses itself when the store's
-// `dismissAt` timestamp elapses. Tapping also dismisses early.
+// L4 "Memory in the Cauldron" — per Designer Notes: "should feel like a
+// glitch, not a cutscene — something the cauldron did that the dungeon
+// didn't intend." No title chrome, no progress bar — just a fast ghost
+// of an image that snaps in and bleeds out. The puzzle is blocked
+// (per doc: "3-second pause" — we use 2.2s) so the player can't miss
+// the moth, but no dialog UI frames it as an explainable event.
 
 export function MemoryVisionOverlay() {
   const dismissAt = useGame((s) => s.memoryVision.dismissAt);
   const dismiss = useGame((s) => s.dismissMemoryVision);
   const reduce = useReducedMotion();
-  const remainingMs = useCountdownDismiss(dismissAt, dismiss);
+  useCountdownDismiss(dismissAt, dismiss);
 
-  // Escape / Enter / Space dismiss early — keeps keyboard users in flow.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
@@ -27,120 +27,103 @@ export function MemoryVisionOverlay() {
     return () => window.removeEventListener('keydown', handler);
   }, [dismiss]);
 
-  const progress = dismissAt ? 1 - Math.min(1, remainingMs / 3200) : 0;
-
   return (
     <motion.div
-      role="dialog"
-      aria-modal="true"
-      aria-label="A memory surfaces in the cauldron"
-      className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md cursor-pointer"
-      initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5 }}
+      role="img"
+      aria-label="A sudden still: a moth pressed against the inside of a glass jar. The image is gone almost before you see it."
+      className="absolute inset-0 z-50 cursor-pointer"
+      // The whole overlay "pushes in" with an off-by-half-a-frame twitch.
+      initial={reduce ? { opacity: 1 } : { opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.04 }}
+      transition={{ duration: reduce ? 0 : 0.18, ease: 'easeOut' }}
       onClick={dismiss}
+      style={{
+        background:
+          'radial-gradient(ellipse at 50% 55%, rgba(0,223,193,0.2) 0%, rgba(10,10,9,0.96) 55%, rgba(0,0,0,1) 100%)',
+        backdropFilter: 'blur(3px)',
+        WebkitBackdropFilter: 'blur(3px)',
+      }}
     >
-      <div className="relative max-w-xs w-full text-center px-6">
-        <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary/75">
-          In the still water
-        </p>
-
-        <svg
-          width="220"
-          height="200"
-          viewBox="0 0 220 200"
-          className="mx-auto mt-4"
+      {/* Interlaced scanline overlay — reads as bad film, not UI */}
+      {!reduce && (
+        <div
           aria-hidden="true"
+          className="absolute inset-0 pointer-events-none mix-blend-overlay opacity-35"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 3px)',
+          }}
+        />
+      )}
+
+      <svg
+        width="260"
+        height="260"
+        viewBox="0 0 260 260"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+        aria-hidden="true"
+      >
+        {/* Workbench silhouette */}
+        <rect x="52" y="188" width="156" height="4" fill="#2a2a27" />
+        <rect x="52" y="192" width="156" height="36" fill="#1a1a18" />
+
+        {/* Hunched figure from behind — never rendered in detail */}
+        <motion.g
+          initial={reduce ? { opacity: 0.92, y: 0 } : { opacity: 0, y: 4 }}
+          animate={{ opacity: 0.92, y: 0 }}
+          transition={{ duration: reduce ? 0 : 0.3 }}
         >
-          <defs>
-            <radialGradient id="mv-halo" cx="50%" cy="50%" r="60%">
-              <stop offset="0%" stopColor="rgba(0,223,193,0.22)" />
-              <stop offset="100%" stopColor="rgba(0,223,193,0)" />
-            </radialGradient>
-          </defs>
-          <ellipse cx="110" cy="110" rx="110" ry="90" fill="url(#mv-halo)" />
-
-          {/* Workbench — a stone slab with a small jar on it */}
-          <rect x="40" y="140" width="140" height="6" fill="#2a2a27" />
-          <rect x="40" y="146" width="140" height="34" fill="#1a1a18" />
-
-          {/* The figure — hunched, head bowed, viewed from behind */}
-          <motion.g
-            initial={reduce ? { opacity: 0.9 } : { opacity: 0, y: 6 }}
-            animate={{ opacity: 0.9, y: 0 }}
-            transition={{ duration: reduce ? 0 : 1.0, delay: reduce ? 0 : 0.2 }}
-          >
-            <path
-              d="M92 70 C 88 88, 84 110, 86 140 L 134 140 C 136 110, 132 88, 128 70 C 124 62, 96 62, 92 70 Z"
-              fill="#2d1b4e"
-              stroke="#0e0e0c"
-              strokeWidth="0.8"
-            />
-            <ellipse cx="110" cy="58" rx="14" ry="16" fill="#1a0e2b" />
-            <ellipse cx="110" cy="52" rx="13" ry="12" fill="#0a0608" />
-          </motion.g>
-
-          {/* Jar + moth — the centerpiece */}
-          <motion.g
-            initial={reduce ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: reduce ? 0 : 0.9, delay: reduce ? 0 : 0.7 }}
-          >
-            <rect
-              x="100"
-              y="122"
-              width="20"
-              height="20"
-              rx="2"
-              fill="rgba(210,232,230,0.15)"
-              stroke="#6b7a82"
-              strokeWidth="0.8"
-            />
-            <rect x="102" y="120" width="16" height="4" fill="#3a3a37" />
-            {/* moth — wings pressed against glass */}
-            <path d="M108 134 L 104 130 L 108 132 L 112 130 L 108 134 Z" fill="#e5e2dd" opacity="0.85" />
-            <ellipse cx="108" cy="134" rx="0.8" ry="1.4" fill="#0a0608" />
-          </motion.g>
-
-          {/* Rippling water at the bottom — SMIL animate so framer doesn't
-              fight us over the `d` attribute. */}
           <path
-            d="M20 180 Q 55 176 90 180 T 160 180 T 200 180"
-            fill="none"
-            stroke="rgba(0,223,193,0.4)"
-            strokeWidth="0.8"
-          >
-            {!reduce && (
-              <animate
-                attributeName="d"
-                values="M20 180 Q 55 176 90 180 T 160 180 T 200 180;M20 180 Q 55 184 90 180 T 160 180 T 200 180;M20 180 Q 55 176 90 180 T 160 180 T 200 180"
-                dur="2.4s"
-                repeatCount="indefinite"
-              />
-            )}
-          </path>
-        </svg>
-
-        <motion.p
-          className="mt-4 font-body italic text-[13px] text-on-surface-variant leading-relaxed"
-          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: reduce ? 0 : 1.4, duration: reduce ? 0 : 0.8 }}
-        >
-          A moth on the back of a hand.
-          <br />
-          The hand stayed very still.
-        </motion.p>
-
-        {/* Bottom progress bar — the only UI cue that the moment will pass. */}
-        <div className="mt-6 mx-auto h-[2px] w-20 rounded-sm bg-surface-container-lowest overflow-hidden">
-          <div
-            className="h-full bg-primary/70"
-            style={{ width: `${progress * 100}%`, transition: 'width 0.1s linear' }}
+            d="M112 110 C 108 132, 104 160, 106 188 L 154 188 C 156 160, 152 132, 148 110 C 144 100, 116 100, 112 110 Z"
+            fill="#2d1b4e"
+            stroke="#0e0e0c"
+            strokeWidth="0.7"
           />
-        </div>
-      </div>
+          <ellipse cx="130" cy="94" rx="13" ry="15" fill="#1a0e2b" />
+          <ellipse cx="130" cy="88" rx="12" ry="11" fill="#0a0608" />
+        </motion.g>
+
+        {/* The jar and moth — centerpiece. Slight jitter on the moth. */}
+        <motion.g
+          initial={reduce ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: reduce ? 0 : 0.5, delay: reduce ? 0 : 0.3 }}
+        >
+          <rect
+            x="120"
+            y="162"
+            width="20"
+            height="22"
+            rx="2"
+            fill="rgba(210,232,230,0.18)"
+            stroke="#6b7a82"
+            strokeWidth="0.8"
+          />
+          <rect x="122" y="160" width="16" height="4" fill="#3a3a37" />
+          {/* Moth shape — wings pressed flat against the glass */}
+          <motion.path
+            d="M128 174 L 124 170 L 128 172 L 132 170 L 128 174 Z"
+            fill="#e5e2dd"
+            initial={reduce ? { opacity: 0.9 } : { opacity: 0 }}
+            animate={{ opacity: [0, 0.9, 0.75, 0.95] }}
+            transition={{ duration: reduce ? 0 : 1.0, delay: reduce ? 0 : 0.5 }}
+          />
+          <ellipse cx="128" cy="174" rx="0.8" ry="1.4" fill="#0a0608" />
+        </motion.g>
+      </svg>
+
+      {/* Just three letters fading in — the initials Mira will scratch next. */}
+      <motion.p
+        aria-hidden="true"
+        className="absolute bottom-[18%] left-0 right-0 text-center font-headline italic text-outline"
+        style={{ fontSize: 40, letterSpacing: '0.26em', textShadow: '0 0 12px rgba(203,196,208,0.25)' }}
+        initial={reduce ? { opacity: 0.7 } : { opacity: 0 }}
+        animate={{ opacity: [0, 0.7, 0.45] }}
+        transition={{ duration: reduce ? 0 : 1.4, delay: reduce ? 0 : 0.8 }}
+      >
+        M.J.M.
+      </motion.p>
     </motion.div>
   );
 }

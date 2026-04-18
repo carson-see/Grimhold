@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { TransitionScene } from '../components/TransitionScene';
+import { SceneCaption } from '../components/SceneCaption';
 import { MiraSmudge } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 
@@ -73,18 +74,14 @@ export function Scene06() {
           </motion.p>
         </motion.div>
 
-        <motion.p
-          className="absolute top-[44%] left-0 right-0 text-center font-body italic text-sm text-on-surface/85 px-10"
-          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: reduce ? 0.5 : 3.6, duration: reduce ? 0 : 0.9 }}
+        <SceneCaption
+          className="bottom-28"
+          delaySec={reduce ? 0.5 : 3.6}
+          sub="She tested the phrase in her mouth. Something in her face rearranged itself."
+          tone="architect"
         >
-          <span className="text-secondary not-italic">&ldquo;Grief resonance.&rdquo;</span>
-          <br />
-          <span className="text-[11px] text-on-surface-variant">
-            She tested the phrase in her mouth. Something in her face rearranged itself.
-          </span>
-        </motion.p>
+          &ldquo;Grief resonance.&rdquo;
+        </SceneCaption>
       </div>
     </TransitionScene>
   );

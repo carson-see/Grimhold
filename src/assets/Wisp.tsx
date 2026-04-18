@@ -46,6 +46,22 @@ const PALETTE: Record<WispColor, { core: string; mid: string; halo: string; thre
     halo: 'rgba(154,138,122,0.45)',
     thread: '#9a8a7a',
   },
+  'violet-green': {
+    // Cael's path — the moth that chose him. Pale luminous green, never
+    // quite settled, like a wing about to lift.
+    core: '#d2bcfa',
+    mid: '#7d9a87',
+    halo: 'rgba(125,154,135,0.45)',
+    thread: '#a8c5b8',
+  },
+  'violet-ink': {
+    // Petra's path — bookish indigo. The wisp reads as "the colour ink
+    // bleeds when paper has been damp for years."
+    core: '#c8b8e8',
+    mid: '#5a4a8a',
+    halo: 'rgba(72,58,128,0.55)',
+    thread: '#3a2e6a',
+  },
   'downward-grey': {
     core: '#babac0',
     mid: '#6b6670',

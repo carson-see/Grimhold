@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { TransitionScene } from '../components/TransitionScene';
+import { SceneCaption } from '../components/SceneCaption';
 import { MiraSmudge } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 
@@ -97,30 +98,24 @@ export function Scene03() {
             <MiraSmudge size={170} />
           </motion.div>
 
-          <motion.p
-            className="absolute top-[46%] left-0 right-0 text-center font-body italic text-[13px] text-on-surface/85 px-10"
-            initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: reduce ? 0.5 : 2.8, duration: reduce ? 0 : 0.9 }}
-          >
-            {bessieAllyActive ? (
-              <>
-                <span className="text-secondary not-italic">&ldquo;I know.&rdquo;</span>
-                <br />
-                <span className="text-[11px] text-on-surface-variant">
-                  — thinking out loud, to no one
-                </span>
-              </>
-            ) : (
-              <>
-                The corridor was empty.
-                <br />
-                <span className="text-[11px] text-on-surface-variant">
-                  She turned away. Smudge did not.
-                </span>
-              </>
-            )}
-          </motion.p>
+          {bessieAllyActive ? (
+            <SceneCaption
+              className="bottom-28"
+              delaySec={reduce ? 0.5 : 2.8}
+              sub="— thinking out loud, to no one"
+              tone="aldric"
+            >
+              &ldquo;I know.&rdquo;
+            </SceneCaption>
+          ) : (
+            <SceneCaption
+              className="bottom-28"
+              delaySec={reduce ? 0.5 : 2.8}
+              sub="She turned away. Smudge did not."
+            >
+              The corridor was empty.
+            </SceneCaption>
+          )}
         </div>
       </div>
     </TransitionScene>

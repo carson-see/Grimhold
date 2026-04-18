@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { TransitionScene } from '../components/TransitionScene';
+import { SceneCaption } from '../components/SceneCaption';
 import { MiraSmudge } from '../assets/MiraSmudge';
 import { IngredientSvg } from '../assets/Ingredients';
 import { useGame } from '../game/store';
@@ -79,49 +80,42 @@ export function Scene05() {
           </motion.div>
         )}
 
-        <motion.p
-          className="absolute top-[42%] left-0 right-0 text-center font-body italic text-sm text-on-surface/85 px-10"
-          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: reduce ? 0.4 : 3.2, duration: reduce ? 0 : 0.9 }}
-        >
-          {branch === 'pocketed' && (
-            <>
-              Her hand disappeared into the pocket.
-              <br />
-              <span className="text-[11px] text-on-surface-variant">
-                It came back empty. She did not look at Smudge.
-              </span>
-            </>
-          )}
-          {branch === 'downward' && (
-            <>
-              The grate was quiet.
-              <br />
-              <span className="text-[11px] text-on-surface-variant">
-                Whatever it was, it had gone the wrong way. Nobody above knew.
-              </span>
-            </>
-          )}
-          {branch === 'dissolved' && (
-            <>
-              It dissolved. She watched her palm, then the cauldron.
-              <br />
-              <span className="text-[11px] text-on-surface-variant">
-                Nothing kept. Smudge tilted his head — disappointed, maybe.
-              </span>
-            </>
-          )}
-          {branch === 'undelivered' && (
-            <>
-              Smudge watched the wall for a long moment, then looked away.
-              <br />
-              <span className="text-[11px] text-on-surface-variant">
-                The cauldrons settled. Whatever it was, it did not arrive this time.
-              </span>
-            </>
-          )}
-        </motion.p>
+        {branch === 'pocketed' && (
+          <SceneCaption
+            className="bottom-28"
+            delaySec={reduce ? 0.4 : 3.2}
+            sub="It came back empty. She did not look at Smudge."
+          >
+            Her hand disappeared into the pocket.
+          </SceneCaption>
+        )}
+        {branch === 'downward' && (
+          <SceneCaption
+            className="bottom-28"
+            delaySec={reduce ? 0.4 : 3.2}
+            sub="Whatever it was, it had gone the wrong way. Nobody above knew."
+          >
+            The grate was quiet.
+          </SceneCaption>
+        )}
+        {branch === 'dissolved' && (
+          <SceneCaption
+            className="bottom-28"
+            delaySec={reduce ? 0.4 : 3.2}
+            sub="Nothing kept. Smudge tilted his head — disappointed, maybe."
+          >
+            It dissolved. She watched her palm, then the cauldron.
+          </SceneCaption>
+        )}
+        {branch === 'undelivered' && (
+          <SceneCaption
+            className="bottom-28"
+            delaySec={reduce ? 0.4 : 3.2}
+            sub="The cauldrons settled. Whatever it was, it did not arrive this time."
+          >
+            Smudge watched the wall for a long moment, then looked away.
+          </SceneCaption>
+        )}
       </div>
     </TransitionScene>
   );

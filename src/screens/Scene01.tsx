@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { TransitionScene } from '../components/TransitionScene';
+import { SceneCaption } from '../components/SceneCaption';
 import { MiraReaching } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 
@@ -47,18 +48,12 @@ export function Scene01() {
           }}
         />
 
-        <motion.p
-          className="absolute top-[40%] left-0 right-0 text-center font-body italic text-sm text-on-surface/80 px-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1] }}
-          transition={{ delay: reduce ? 0.4 : 3.2, duration: reduce ? 0.5 : 0.9 }}
+        <SceneCaption
+          delaySec={reduce ? 0.4 : 3.2}
+          sub="A folded paper slid in, and she did not pick it up."
         >
           Her fingers stopped six inches short of the grate.
-          <br />
-          <span className="text-[11px] text-on-surface-variant">
-            A folded paper slid in, and she did not pick it up.
-          </span>
-        </motion.p>
+        </SceneCaption>
       </div>
     </TransitionScene>
   );

@@ -15,6 +15,8 @@ const WISP_LABEL: Record<WispColor, string> = {
   'violet-dark': 'a violet wisp with a darker thread',
   'violet-strong': 'a violet wisp — brighter than before',
   'violet-grey': 'a violet wisp threaded warm grey',
+  'violet-green': 'a violet wisp shot through with moth-pale green',
+  'violet-ink': 'a deep ink-blue wisp, edges almost black',
   'downward-grey': 'a grey wisp that went down, not up',
   black: 'a black wisp that circled and returned',
   silent: 'no wisp at all — silence above the cauldron',
@@ -45,6 +47,7 @@ export function LevelComplete() {
   const setScreen = useGame((s) => s.setScreen);
   const resetLevel = useGame((s) => s.resetLevel);
   const startLevel = useGame((s) => s.startLevel);
+  const chapter2Start = useGame((s) => s.chapter2Start);
 
   // Deep-link guard — bounce to title if someone lands here without a win.
   useEffect(() => {
@@ -67,10 +70,16 @@ export function LevelComplete() {
     //     played by the time LevelComplete shows up.
     //   - Between-level (Scene 02 / 03) — fire here, between LC and the
     //     next level. Anything else jumps straight to the next level.
-    // After the last level, drop into the Larder stub (chapter close).
+    // After L10 (the last cauldron level) → L11 escape capstone.
     switch (levelId) {
       case 1: setScreen('scene-02'); return;            // → Scene 02, then L2
       case 3: setScreen('scene-03'); return;            // → Scene 03, then L4
+      case 10:
+        // First L10 clear → L11 escape. Replay (chapter2Start already
+        // committed) → straight to the Larder; the escape outcome is
+        // first-only and shouldn't be re-prompted.
+        setScreen(chapter2Start ? 'larder-stub' : 'level-11');
+        return;
       default:
         if (nextId !== null) {
           startLevel(nextId);
@@ -143,6 +152,21 @@ export function LevelComplete() {
             </p>
           )}
 
+          {result.altPathDiscovered && (
+            <div
+              className="my-3 px-3 py-2 rounded-sm border-[0.5px] border-tertiary/40 bg-tertiary-container/25"
+              role="status"
+            >
+              <p className="font-label text-[10px] uppercase tracking-[0.24em] text-tertiary">
+                Alternate path discovered
+              </p>
+              <p className="font-body italic text-[12px] text-on-surface/90 mt-1 leading-snug">
+                You sorted it the way someone else might have. The wisp came out
+                a different colour. +400 coins, +1 gem — and the wall remembers.
+              </p>
+            </div>
+          )}
+
           <div className="mt-3 space-y-2">
             <RewardRow
               icon={<CoinIcon size={18} />}
@@ -154,7 +178,11 @@ export function LevelComplete() {
             {result.gems > 0 && (
               <RewardRow
                 icon={<GemIcon size={18} />}
-                label="Gems · First Clear"
+                label={
+                  result.altPathDiscovered
+                    ? 'Gems · First Clear + Alt Path'
+                    : 'Gems · First Clear'
+                }
                 amount={`+${result.gems}`}
                 total={gems}
                 accent="tertiary"

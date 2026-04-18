@@ -1,83 +1,74 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGame } from '../game/store';
-import { useCountdownDismiss } from './useCountdownDismiss';
 
-// Level 8 — Smudge pries an old folded note from a crack near the floor
-// and drops it in front of Mira. The puzzle pauses for ~5s while she
-// reads it. Tap or any key dismisses early. The note text is added to
-// the lore log when dismissed (handled by the store).
+// L8 — Smudge pries an old folded note from a crack near the floor and
+// drops it in front of Mira. Per level doc §Designer Notes: "the level
+// resuming automatically after is the critical design choice — the
+// player does not get to stop and reflect." So this is NON-blocking:
+// the note appears as a weighted banner along the top while sorting
+// continues underneath. Auto-dismisses when the configured duration
+// elapses; tapping reads the full note in a lingering beat but does
+// not pause the puzzle.
 
 export function NoteFromWallOverlay() {
   const dismissAt = useGame((s) => s.noteFromWall.dismissAt);
   const dismiss = useGame((s) => s.dismissNoteFromWall);
   const text = useGame((s) => s.level.noteFromWall?.text ?? '');
-  const totalMs = useGame((s) => s.level.noteFromWall?.durationMs ?? 5000);
-  const remainingMs = useCountdownDismiss(dismissAt, dismiss);
   const reduce = useReducedMotion();
-  const progress = dismissAt ? 1 - Math.min(1, remainingMs / totalMs) : 0;
+  const dismissedRef = useRef(false);
 
+  // One-shot auto-dismiss at the configured duration. No 10Hz tick — the
+  // player doesn't need a countdown for a narrative beat. `dismissedRef`
+  // guards StrictMode double-invocation.
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        dismiss();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [dismiss]);
+    if (!dismissAt) return;
+    const remaining = Math.max(0, dismissAt - Date.now());
+    const id = window.setTimeout(() => {
+      if (dismissedRef.current) return;
+      dismissedRef.current = true;
+      dismiss();
+    }, remaining);
+    return () => window.clearTimeout(id);
+  }, [dismissAt, dismiss]);
 
   return (
     <motion.div
-      role="dialog"
-      aria-modal="true"
-      aria-label="A folded note pried from the wall"
-      className="absolute inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md cursor-pointer p-6"
-      initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: reduce ? 0 : 0.5 }}
-      onClick={dismiss}
+      role="status"
+      aria-live="polite"
+      aria-label={`A note pried from the wall: ${text}`}
+      className="absolute top-14 left-3 right-3 z-40 pointer-events-auto"
+      initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: reduce ? 0 : 0.8, ease: 'easeOut' }}
+      onClick={() => {
+        if (dismissedRef.current) return;
+        dismissedRef.current = true;
+        dismiss();
+      }}
     >
-      <motion.div
-        className="relative max-w-sm w-full"
-        initial={reduce ? { opacity: 1, y: 0, rotate: 0 } : { opacity: 0, y: 10, rotate: -1.5 }}
-        animate={{ opacity: 1, y: 0, rotate: -1 }}
-        transition={{ duration: reduce ? 0 : 0.7, ease: 'easeOut' }}
+      <div
+        className="relative rounded-sm px-4 py-3 border-[0.5px] border-secondary/35"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(58,52,42,0.94) 0%, rgba(34,30,24,0.96) 100%)',
+          boxShadow: '0 2px 20px rgba(0,0,0,0.5), inset 0 0 12px rgba(255,215,153,0.08)',
+          // Slight rotation so the banner reads as a physical scrap,
+          // not a system alert.
+          transform: 'rotate(-0.6deg)',
+        }}
       >
-        <p className="font-label text-[10px] uppercase tracking-[0.24em] text-secondary/85 mb-2 text-center">
-          Pried from a crack near the floor
+        <p className="font-label text-[9px] uppercase tracking-[0.24em] text-secondary/85">
+          Pried from a crack near the floor — Smudge dropped it
         </p>
-        {/* The note — paper texture via gradient + slight rotation. The
-            ink-grain filter from the SVG library is intentionally NOT used
-            here: this is supposed to read like real paper, not a glyph. */}
-        <div
-          className="relative px-5 py-4 rounded-sm border-[0.5px] border-secondary/30"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(58,52,42,0.92), rgba(34,30,24,0.96))',
-            boxShadow: '0 0 24px rgba(0,0,0,0.55), inset 0 0 12px rgba(255,215,153,0.08)',
-          }}
-        >
-          <p className="font-body italic text-[14px] leading-relaxed text-on-surface/95">
-            {text}
-          </p>
-          <p className="mt-3 font-headline italic text-[12px] text-secondary/80 text-right">
-            — Someone who got out
-          </p>
-        </div>
-
-        <div className="mt-4 mx-auto h-[2px] w-20 rounded-sm bg-surface-container-lowest overflow-hidden">
-          <div
-            className="h-full bg-secondary/70"
-            style={{ width: `${progress * 100}%`, transition: 'width 0.1s linear' }}
-          />
-        </div>
-        <p className="text-center text-[10px] font-label uppercase tracking-[0.24em] text-on-surface-variant/60 mt-2">
-          Tap to continue · the puzzle resumes
+        <p className="font-body italic text-[13px] leading-[1.5] text-on-surface/95 mt-1">
+          {text}
         </p>
-      </motion.div>
+        <p className="font-headline italic text-[11px] text-secondary/80 text-right mt-1">
+          — Someone who got out
+        </p>
+      </div>
     </motion.div>
   );
 }

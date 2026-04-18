@@ -13,6 +13,8 @@ import type {
   Screen,
 } from './types';
 import { LEVEL_1, LEVELS, getLevel, nextLevelId } from '../data/levels';
+import { findPowerup, findUnlock } from '../data/powerups';
+import type { EscapeOutcomeId } from '../data/escape';
 
 export type CharacterClass = 'witch' | 'rogue' | 'scholar' | 'knight';
 
@@ -58,6 +60,33 @@ export const INVENTORY_ITEM_IDS = [
 ] as const;
 export type InventoryItemId = typeof INVENTORY_ITEM_IDS[number];
 
+// Per-level set of recipe paths the player has cleared. Drives the
+// "discover an alternate path → bonus coin + gem" loop. Persisted across
+// sessions so replays don't double-grant the same path. Keyed by level
+// id, value is a string[] of RecipePathId — JSON-friendly.
+export type PathsClearedMap = Record<number, string[]>;
+
+// Power-up tokens — consumable in-level helpers, persisted across runs.
+// Earned by clearing levels (small drops) or bought from the Larder for
+// coins. Prices and recipes live in `data/powerups.ts`.
+export const POWERUP_IDS = [
+  'extra-move',     // +2 placement moves added to current level's budget
+  'freeze-volatile', // suspend volatility shifts for 5 moves
+  'recipe-peek',    // reveal one hidden recipe's placement for this level
+] as const;
+export type PowerUpId = typeof POWERUP_IDS[number];
+export type PowerUpInventory = Record<PowerUpId, number>;
+
+// Permanent unlocks bought with gems. Cosmetic + lore — do not affect
+// puzzle outcomes. (Visual health system + music-box second phrase will
+// hook here.)
+export const UNLOCK_IDS = [
+  'smudge-skin-tarred',  // alternate Smudge palette (gem-purchasable)
+  'music-box-phrase',    // unlock the long-form music-box theme
+  'character-peek',      // a one-time hint of which hidden recipes exist on a level
+] as const;
+export type UnlockId = typeof UNLOCK_IDS[number];
+
 interface Store {
   // Meta / progression
   screen: Screen;
@@ -69,6 +98,11 @@ interface Store {
   bessieAllyActive: boolean;    // set to true if Level 3 recruit succeeds
   hasPocketedUnknown: boolean;  // L5 outcome — used in later acts
   inventory: InventoryItemId[]; // lore + key items, additive across the run
+  pathsCleared: PathsClearedMap; // per-level: which recipe paths the player has won via
+  powerups: PowerUpInventory;    // consumable in-level tokens
+  unlocks: UnlockId[];           // permanent gem-purchased unlocks
+  /** Which L11 outcome the player resolved. Non-null → Chapter One is closed. */
+  chapter2Start: EscapeOutcomeId | null;
   coins: number;
   gems: number;
   lastResult: LevelResult | null;
@@ -89,6 +123,11 @@ interface Store {
   conditionalDelivered: boolean;      // L5: Smudge has brought the Unknown
   timeSensitiveSatisfied: boolean;    // L6: C-Left has been filled at least once
 
+  // Active power-ups for the current level (reset on startLevel)
+  extraMovesGranted: number;          // raises moveLimit by this many
+  freezeVolatileUntilMove: number;    // suspend volatility until movesUsed >= this
+  revealedHiddenRecipeId: RecipePathId | null; // peek result for this level
+
   // Actions
   setScreen: (s: Screen) => void;
   pickCharacter: (c: CharacterClass) => void;
@@ -107,6 +146,16 @@ interface Store {
   registerJointSyncHit: () => void;     // player tap landed inside the sync window
   expireJointSync: () => void;          // window elapsed without a hit
   addInventory: (id: InventoryItemId) => void;
+  /** Brew a power-up at the Larder counter — pays coins, increments stash. */
+  brewPowerup: (id: PowerUpId) => boolean;
+  /** Spend gems for a permanent unlock. Returns false if can't afford. */
+  buyUnlock: (id: UnlockId) => boolean;
+  /** Use a power-up token in the current level. Returns false on no-op. */
+  usePowerup: (id: PowerUpId) => boolean;
+  /** Record the L11 escape outcome — unlocks Chapter Two start position. */
+  setChapter2Start: (outcome: EscapeOutcomeId) => void;
+  /** Bank L11 coin / gem rewards. Idempotent per outcome via chapter2Start check. */
+  addEscapeRewards: (coins: number, gems: number) => void;
   finishLevel: () => LevelResult;
   advanceToNextLevel: () => void;
 }
@@ -220,12 +269,19 @@ function firstMatchingRecipe(
   return null;
 }
 
-function buildInitialIngredients(level: LevelConfig): Ingredient[] {
+function buildInitialIngredients(level: LevelConfig, hasPocketedUnknown: boolean): Ingredient[] {
   const out: Ingredient[] = [];
   for (const group of level.ingredients) {
     for (let i = 0; i < group.count; i++) {
       out.push({ id: `${group.kind}-${i}`, kind: group.kind, placedIn: null });
     }
+  }
+  // L9 chain: if the player pocketed the L5 Unknown, it enters the L9
+  // tray at level start. Recipes that consume it (downward / silent)
+  // become reachable; other paths remain valid because the Unknown is
+  // exempt from the "every ingredient placed" check.
+  if (level.chainsPocketedUnknown && hasPocketedUnknown) {
+    out.push({ id: 'unknown-pocketed', kind: 'unknown', placedIn: null });
   }
   return out;
 }
@@ -251,6 +307,46 @@ function emptyJointSync(): JointSyncState {
 function emptyNoteFromWall(): NoteFromWallState {
   return { open: false, triggered: false, dismissAt: null };
 }
+
+function validatePathsCleared(raw: unknown): PathsClearedMap | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const out: PathsClearedMap = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const lvl = Number(k);
+    if (!Number.isFinite(lvl) || lvl < 1 || lvl > 100) continue;
+    if (!Array.isArray(v)) continue;
+    out[lvl] = v.filter((x): x is string => typeof x === 'string').slice(0, 12);
+  }
+  return out;
+}
+
+function validatePowerups(raw: unknown): PowerUpInventory | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const out: PowerUpInventory = { 'extra-move': 0, 'freeze-volatile': 0, 'recipe-peek': 0 };
+  for (const id of POWERUP_IDS) {
+    const n = r[id];
+    if (typeof n === 'number' && Number.isFinite(n)) {
+      out[id] = Math.max(0, Math.min(99, Math.floor(n)));
+    }
+  }
+  return out;
+}
+
+function validateUnlocks(raw: unknown): UnlockId[] | null {
+  if (!Array.isArray(raw)) return null;
+  return raw.filter(
+    (x): x is UnlockId =>
+      typeof x === 'string' && (UNLOCK_IDS as readonly string[]).includes(x),
+  );
+}
+
+const ALLOWED_CHAPTER2_STARTS: readonly string[] = [
+  'through-grate',
+  'through-kitchen',
+  'down-the-floor',
+  'caught',
+];
 
 // Force-close any of the overlay states without touching `triggered` —
 // keeps the "fired this level" marker intact so the overlay can't re-fire,
@@ -309,13 +405,18 @@ function resolveEncounterOutcome(
 // so the shift feels like drift, not teleport). Time-sensitive cauldrons
 // are excluded from the shift so the L6 overheat warning can't be re-
 // triggered by a cauldron the player already satisfied.
+//
+// `freezeUntilMove` is set by the freeze-volatile power-up. While
+// `nextMoves <= freezeUntilMove`, no shift fires.
 function applyVolatilityShift(
   ingredients: Ingredient[],
   level: LevelConfig,
   nextMoves: number,
+  freezeUntilMove: number,
 ): Ingredient[] {
   const vol = level.volatility;
   if (!vol || nextMoves === 0 || nextMoves % vol.shiftEveryMoves !== 0) return ingredients;
+  if (nextMoves <= freezeUntilMove) return ingredients;
   const order = level.cauldrons;
   const tsCauldron = level.timeSensitive?.cauldron;
   return ingredients.map((ing) => {
@@ -341,13 +442,20 @@ export const useGame = create<Store>()(
       bessieAllyActive: false,
       hasPocketedUnknown: false,
       inventory: [],
+      pathsCleared: {},
+      // Start with two extra-move tokens so a first-time player can find
+      // and use the power-up bar without having to grind coins first.
+      powerups: { 'extra-move': 2, 'freeze-volatile': 0, 'recipe-peek': 1 },
+      unlocks: [],
+      chapter2Start: null,
       coins: 0,
       gems: 0,
       lastResult: null,
 
       // Puzzle
       level: LEVEL_1,
-      ingredients: buildInitialIngredients(LEVEL_1),
+      // L1 has no chainsPocketedUnknown; flag value is moot.
+      ingredients: buildInitialIngredients(LEVEL_1, false),
       selectedIngredientId: null,
       movesUsed: 0,
       completed: false,
@@ -361,6 +469,10 @@ export const useGame = create<Store>()(
       conditionalDelivered: false,
       timeSensitiveSatisfied: false,
 
+      extraMovesGranted: 0,
+      freezeVolatileUntilMove: 0,
+      revealedHiddenRecipeId: null,
+
       setScreen: (s) => set({ screen: s }),
       pickCharacter: (c) => set({ character: c }),
       setName: (n) => set({ name: n.trim().slice(0, 20) || 'Mira' }),
@@ -369,9 +481,10 @@ export const useGame = create<Store>()(
 
       startLevel: (id) => {
         const level = getLevel(id);
+        const { hasPocketedUnknown } = get();
         set({
           level,
-          ingredients: buildInitialIngredients(level),
+          ingredients: buildInitialIngredients(level, hasPocketedUnknown),
           selectedIngredientId: null,
           movesUsed: 0,
           completed: false,
@@ -384,14 +497,17 @@ export const useGame = create<Store>()(
           noteFromWall: emptyNoteFromWall(),
           conditionalDelivered: false,
           timeSensitiveSatisfied: false,
+          extraMovesGranted: 0,
+          freezeVolatileUntilMove: 0,
+          revealedHiddenRecipeId: null,
           lastResult: null,
         });
       },
 
       resetLevel: () => {
-        const { level } = get();
+        const { level, hasPocketedUnknown } = get();
         set({
-          ingredients: buildInitialIngredients(level),
+          ingredients: buildInitialIngredients(level, hasPocketedUnknown),
           selectedIngredientId: null,
           movesUsed: 0,
           completed: false,
@@ -404,6 +520,9 @@ export const useGame = create<Store>()(
           noteFromWall: emptyNoteFromWall(),
           conditionalDelivered: false,
           timeSensitiveSatisfied: false,
+          extraMovesGranted: 0,
+          freezeVolatileUntilMove: 0,
+          revealedHiddenRecipeId: null,
           lastResult: null,
         });
       },
@@ -413,11 +532,12 @@ export const useGame = create<Store>()(
           set({ selectedIngredientId: null });
           return;
         }
-        // Block selection during blocking overlays (encounter, memory,
-        // note-from-wall). Architect voice and joint-sync are non-
-        // blocking — player keeps sorting while they play.
-        const { encounter, memoryVision, noteFromWall } = get();
-        if (encounter.open || memoryVision.open || noteFromWall.open) return;
+        // Block selection only during truly-blocking overlays (encounter,
+        // memory vision). Architect voice, joint-sync and the L8 wall
+        // note are non-blocking per the level doc's "level resumes
+        // automatically" rule — player keeps sorting while they play.
+        const { encounter, memoryVision } = get();
+        if (encounter.open || memoryVision.open) return;
         const ing = get().ingredients.find((i) => i.id === id);
         if (!ing || ing.placedIn !== null) return;
         set({ selectedIngredientId: id });
@@ -425,17 +545,18 @@ export const useGame = create<Store>()(
 
       placeInCauldron: (cauldron) => {
         const s = get();
-        const { selectedIngredientId, ingredients, movesUsed, level, completed, failed, encounter, memoryVision, noteFromWall, timeSensitiveSatisfied, jointSync } = s;
+        const { selectedIngredientId, ingredients, movesUsed, level, completed, failed, encounter, memoryVision, timeSensitiveSatisfied, jointSync, extraMovesGranted, freezeVolatileUntilMove } = s;
         if (completed || failed || !selectedIngredientId) return;
-        if (encounter.open || memoryVision.open || noteFromWall.open) return;
-        if (movesUsed >= level.moveLimit) return;
+        // Note-from-wall is intentionally non-blocking per level doc.
+        if (encounter.open || memoryVision.open) return;
+        if (movesUsed >= level.moveLimit + extraMovesGranted) return;
 
         const nextMoves = movesUsed + 1;
 
         // 1. Drift existing placements BEFORE the new placement lands —
         //    otherwise a Darkspore placed on move 5 would rotate out of
         //    its intended slot on the same move.
-        let next = applyVolatilityShift(ingredients, level, nextMoves);
+        let next = applyVolatilityShift(ingredients, level, nextMoves, freezeVolatileUntilMove);
         // 2. Apply the new placement.
         next = next.map((i) =>
           i.id === selectedIngredientId ? { ...i, placedIn: cauldron } : i,
@@ -486,9 +607,9 @@ export const useGame = create<Store>()(
       },
 
       removeFromCauldron: (id) => {
-        const { ingredients, movesUsed, level, completed, failed, encounter, memoryVision, noteFromWall } = get();
+        const { ingredients, movesUsed, level, completed, failed, encounter, memoryVision } = get();
         if (completed || failed || movesUsed >= level.moveLimit) return;
-        if (encounter.open || memoryVision.open || noteFromWall.open) return;
+        if (encounter.open || memoryVision.open) return;
         const target = ingredients.find((i) => i.id === id);
         if (!target || target.placedIn === null) return; // no-op on unplaced
         const next = ingredients.map((i) =>
@@ -555,8 +676,75 @@ export const useGame = create<Store>()(
         set({ inventory: [...inventory, id] });
       },
 
+      brewPowerup: (id) => {
+        const def = findPowerup(id);
+        if (!def) return false;
+        const { coins, powerups } = get();
+        if (coins < def.coinPrice) return false;
+        set({
+          coins: coins - def.coinPrice,
+          powerups: { ...powerups, [id]: powerups[id] + 1 },
+        });
+        return true;
+      },
+
+      buyUnlock: (id) => {
+        const def = findUnlock(id);
+        if (!def) return false;
+        const { gems, unlocks } = get();
+        if (unlocks.includes(id)) return false;
+        if (gems < def.gemPrice) return false;
+        set({ gems: gems - def.gemPrice, unlocks: [...unlocks, id] });
+        return true;
+      },
+
+      setChapter2Start: (outcome) => {
+        const { chapter2Start } = get();
+        if (chapter2Start) return; // idempotent — first-outcome wins
+        set({ chapter2Start: outcome });
+      },
+
+      addEscapeRewards: (c, g) => {
+        // Idempotent: only credits once per chapter2Start commit. Caller
+        // pairs this with `setChapter2Start` which gates on first-only.
+        const { chapter2Start, coins, gems } = get();
+        if (chapter2Start) return; // already rewarded
+        set({ coins: coins + c, gems: gems + g });
+      },
+
+      usePowerup: (id) => {
+        const s = get();
+        const stash = s.powerups[id] ?? 0;
+        if (stash <= 0) return false;
+        // Per-id no-op gates: prevents double-spend via fast clicks
+        // before React commits the disable state on the bar.
+        if (id === 'recipe-peek' && s.revealedHiddenRecipeId !== null) return false;
+        if (id === 'freeze-volatile' && s.movesUsed < s.freezeVolatileUntilMove) return false;
+        // Effects:
+        //   extra-move      → +2 to current level's move budget
+        //   freeze-volatile → suspend volatility shifts for 5 placements
+        //   recipe-peek     → reveal one hidden recipe id (Aldric / Cael / Petra)
+        const next = { ...s.powerups, [id]: stash - 1 };
+        if (id === 'extra-move') {
+          set({ powerups: next, extraMovesGranted: s.extraMovesGranted + 2 });
+          return true;
+        }
+        if (id === 'freeze-volatile') {
+          set({ powerups: next, freezeVolatileUntilMove: s.movesUsed + 5 });
+          return true;
+        }
+        const hiddenIds: RecipePathId[] = ['aldric', 'cael', 'petra'];
+        const cleared = s.pathsCleared[s.level.id] ?? [];
+        const candidate = hiddenIds.find(
+          (hid) => s.level.recipes.some((r) => r.id === hid) && !cleared.includes(hid),
+        );
+        if (!candidate) return false; // all hidden paths already cleared — refund
+        set({ powerups: next, revealedHiddenRecipeId: candidate });
+        return true;
+      },
+
       finishLevel: () => {
-        const { movesUsed, level, completedPathId, coins, gems, highestLevelCleared, encounter, lastResult, ingredients, conditionalDelivered, jointSync } = get();
+        const { movesUsed, level, completedPathId, coins, gems, highestLevelCleared, encounter, lastResult, ingredients, conditionalDelivered, jointSync, pathsCleared } = get();
         // Idempotent: React 18 StrictMode double-invokes setState initializers
         // and effect callbacks in dev, and LevelComplete calls this from a
         // useState initializer. Without this guard the user would double-bank
@@ -568,36 +756,65 @@ export const useGame = create<Store>()(
         const finaleCoins = stars === 3 ? 1500 : stars === 2 ? 800 : 300;
         const standardCoins = stars === 3 ? 1000 : stars === 2 ? 600 : 200;
         const earnedCoins = level.id === LEVELS[LEVELS.length - 1].id ? finaleCoins : standardCoins;
+        // Hidden alt-path discovery: every recipe path the player hasn't
+        // cleared on this level grants +1 gem and +400 coins. Wall is
+        // visible from the start, so it doesn't count as "discovered".
+        const priorPaths = pathsCleared[level.id] ?? [];
+        const isAltDiscovery =
+          path.id !== 'wall' && !priorPaths.includes(path.id);
+        const altPathCoins = isAltDiscovery ? 400 : 0;
+        const altPathGem = isAltDiscovery ? 1 : 0;
         // First clear → 1 gem; L9 refusal path → +1 bonus gem; L10 finale → +5 chapter bonus.
         const firstClearGem = level.id > highestLevelCleared ? 1 : 0;
         const refusalBonus = path.id === 'refusal' ? 1 : 0;
         const finaleBonus = level.id === LEVELS[LEVELS.length - 1].id ? 5 : 0;
-        const earnedGems = firstClearGem + refusalBonus + finaleBonus;
+        const earnedGems = firstClearGem + refusalBonus + finaleBonus + altPathGem;
+        const totalCoins = earnedCoins + altPathCoins;
         const cond = level.conditionalIngredient;
-        // Only counts as "pocketed" if the Unknown was actually delivered
-        // first — an early-finish player who never saw it shouldn't get
-        // credit for hiding it.
+        // Only counts as "pocketed" if the Unknown was actually present
+        // in the tray — for L5 that's `conditionalDelivered`; for L9 the
+        // Unknown is pre-populated in the starting tray, so we bypass
+        // the delivery flag and just check current presence.
+        const isPrepopulated = !!level.chainsPocketedUnknown;
         const pocketedUnknown =
-          !!cond && conditionalDelivered &&
+          !!cond &&
+          (conditionalDelivered || isPrepopulated) &&
           ingredients.some((i) => i.kind === cond.kind && i.placedIn === null);
         const result: LevelResult = {
           levelId: level.id,
           stars,
           movesUsed,
-          coins: earnedCoins,
+          coins: totalCoins,
           gems: earnedGems,
           wispColor: path.wispColor,
           recipePathId: path.id,
           encounterChoice: encounter.choice ?? undefined,
           pocketedUnknown: cond ? pocketedUnknown : undefined,
           jointHit: level.jointSync ? jointSync.hit : undefined,
+          altPathDiscovered: isAltDiscovery,
         };
+        const nextPaths = priorPaths.includes(path.id)
+          ? pathsCleared
+          : { ...pathsCleared, [level.id]: [...priorPaths, path.id] };
+        // Power-up drops:
+        //   - Every 3-star clear → +1 extra-move token
+        //   - Alt-path discovery → +1 freeze-volatile token (encourages
+        //     experimentation on volatility-heavy levels)
+        //   - First clear of a level → +1 recipe-peek (helps with the
+        //     escalating hidden-recipe count)
+        const { powerups } = get();
+        const nextPowerups = { ...powerups };
+        if (stars === 3) nextPowerups['extra-move']++;
+        if (isAltDiscovery) nextPowerups['freeze-volatile']++;
+        if (firstClearGem > 0) nextPowerups['recipe-peek']++;
         set({
           lastResult: result,
-          coins: coins + earnedCoins,
+          coins: coins + totalCoins,
           gems: gems + earnedGems,
           highestLevelCleared: Math.max(highestLevelCleared, level.id),
           hasPocketedUnknown: pocketedUnknown || get().hasPocketedUnknown,
+          pathsCleared: nextPaths,
+          powerups: nextPowerups,
         });
         return result;
       },
@@ -628,6 +845,10 @@ export const useGame = create<Store>()(
         bessieAllyActive: s.bessieAllyActive,
         hasPocketedUnknown: s.hasPocketedUnknown,
         inventory: s.inventory,
+        pathsCleared: s.pathsCleared,
+        powerups: s.powerups,
+        unlocks: s.unlocks,
+        chapter2Start: s.chapter2Start,
         coins: s.coins,
         gems: s.gems,
       }),
@@ -642,6 +863,10 @@ export const useGame = create<Store>()(
           bessieAllyActive: unknown;
           hasPocketedUnknown: unknown;
           inventory: unknown;
+          pathsCleared: unknown;
+          powerups: unknown;
+          unlocks: unknown;
+          chapter2Start: unknown;
           coins: unknown;
           gems: unknown;
         }>;
@@ -679,6 +904,14 @@ export const useGame = create<Store>()(
           bessieAllyActive: typeof p.bessieAllyActive === 'boolean' ? p.bessieAllyActive : current.bessieAllyActive,
           hasPocketedUnknown: typeof p.hasPocketedUnknown === 'boolean' ? p.hasPocketedUnknown : current.hasPocketedUnknown,
           inventory: inv,
+          // pathsCleared: validate shape — keys must be numeric strings,
+          // values must be string arrays. Quietly drop anything else.
+          pathsCleared: validatePathsCleared(p.pathsCleared) ?? current.pathsCleared,
+          powerups: validatePowerups(p.powerups) ?? current.powerups,
+          unlocks: validateUnlocks(p.unlocks) ?? current.unlocks,
+          chapter2Start: ALLOWED_CHAPTER2_STARTS.includes(p.chapter2Start as string)
+            ? (p.chapter2Start as EscapeOutcomeId)
+            : current.chapter2Start,
           coins: coinsNum !== null ? Math.max(0, Math.min(9_999_999, Math.floor(coinsNum))) : current.coins,
           gems: gemsNum !== null ? Math.max(0, Math.min(99_999, Math.floor(gemsNum))) : current.gems,
         };
@@ -759,7 +992,16 @@ function computeOverlays(
   }
 
   const cond = level.conditionalIngredient;
-  if (cond && !s.conditionalDelivered && nextMoves >= cond.deliverAtMove) {
+  // Skip mid-level delivery on chained levels (L9): the Unknown is
+  // pre-populated in the starting tray by buildInitialIngredients —
+  // delivering AGAIN would put two Unknowns in play and break the
+  // downward/silent recipe placements.
+  if (
+    cond &&
+    !level.chainsPocketedUnknown &&
+    !s.conditionalDelivered &&
+    nextMoves >= cond.deliverAtMove
+  ) {
     // Flag flips here; the actual Unknown ingredient is appended to the
     // ingredients array by the caller (placeInCauldron) on the same tick.
     out.conditionalDelivered = true;

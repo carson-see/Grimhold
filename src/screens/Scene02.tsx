@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { TransitionScene } from '../components/TransitionScene';
+import { SceneCaption } from '../components/SceneCaption';
 import { RecipePanel } from '../components/RecipePanel';
 import { useGame } from '../game/store';
 import { CAULDRON_LABEL, getLevel } from '../data/levels';
@@ -80,18 +81,13 @@ export function Scene02() {
           </motion.div>
         </div>
 
-        <motion.p
-          className="font-body italic text-sm text-on-surface/85 text-center max-w-[300px]"
-          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: reduce ? 0 : 2.2, duration: reduce ? 0 : 0.9 }}
+        <SceneCaption
+          className="bottom-28"
+          delaySec={reduce ? 0 : 2.2}
+          sub={`They knew what would be on ${name}'s wall today.`}
         >
           Someone down here knows how these cauldrons work.
-          <br />
-          <span className="text-on-surface-variant">
-            They knew what would be on {name}'s wall today.
-          </span>
-        </motion.p>
+        </SceneCaption>
       </div>
     </TransitionScene>
   );

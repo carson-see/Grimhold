@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { TransitionScene } from '../components/TransitionScene';
+import { SceneCaption } from '../components/SceneCaption';
 import { MiraSmudge } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 
@@ -96,22 +97,17 @@ export function Scene10() {
           />
         )}
 
-        <motion.p
-          className="absolute top-[36%] left-0 right-0 text-center font-body italic text-sm text-on-surface/90 px-10"
-          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: reduce ? 0.4 : 3.4, duration: reduce ? 0 : 1.0 }}
+        <SceneCaption
+          className="bottom-28"
+          delaySec={reduce ? 0.4 : 3.4}
+          durationSec={reduce ? 0 : 1.0}
+          sub={synced
+            ? 'She had learned to brew. She had learned to refuse. She had learned to listen.'
+            : 'She had learned to brew. She had not yet learned to refuse.'}
+          tone="aldric"
         >
-          <span className="text-secondary not-italic">
-            &ldquo;Exactly as many as there need to be.&rdquo;
-          </span>
-          <br />
-          <span className="text-[11px] text-on-surface-variant">
-            {synced
-              ? 'She had learned to brew. She had learned to refuse. She had learned to listen.'
-              : 'She had learned to brew. She had not yet learned to refuse.'}
-          </span>
-        </motion.p>
+          &ldquo;Exactly as many as there need to be.&rdquo;
+        </SceneCaption>
 
         <motion.p
           className="absolute top-[8%] left-0 right-0 text-center font-label uppercase tracking-[0.32em] text-tertiary/80 text-[10px]"

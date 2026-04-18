@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { TransitionScene } from '../components/TransitionScene';
+import { SceneCaption } from '../components/SceneCaption';
 import { MiraSmudge } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 
@@ -48,18 +49,13 @@ export function Scene04() {
           M.J.M.
         </motion.div>
 
-        <motion.p
-          className="absolute top-[42%] left-0 right-0 text-center font-body italic text-sm text-on-surface/80 px-10"
-          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: reduce ? 0.4 : 3.0, duration: reduce ? 0 : 0.9 }}
+        <SceneCaption
+          className="bottom-28"
+          delaySec={reduce ? 0.4 : 3.0}
+          sub="She wrote three letters on the wall and stepped back to look at them."
         >
           She didn't know whose moth it was.
-          <br />
-          <span className="text-[11px] text-on-surface-variant">
-            She wrote three letters on the wall and stepped back to look at them.
-          </span>
-        </motion.p>
+        </SceneCaption>
       </div>
     </TransitionScene>
   );

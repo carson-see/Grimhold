@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGame } from './game/store';
 import { TitleScreen } from './screens/Title';
+import { Prologue } from './screens/Prologue';
 import { CharacterSelectScreen } from './screens/CharacterSelect';
 import { NameInputScreen } from './screens/NameInput';
 import { Scene00 } from './screens/Scene00';
@@ -14,6 +15,7 @@ import { Scene07 } from './screens/Scene07';
 import { Scene08 } from './screens/Scene08';
 import { Scene09 } from './screens/Scene09';
 import { Scene10 } from './screens/Scene10';
+import { Level11Escape } from './screens/Level11Escape';
 import { LevelScreen } from './screens/Level';
 import { WispScene } from './screens/Wisp';
 import { LevelComplete } from './screens/LevelComplete';
@@ -32,6 +34,7 @@ export function App() {
         transition={{ duration: 0.35, ease: 'easeInOut' }}
       >
         {screen === 'title' && <TitleScreen />}
+        {screen === 'prologue' && <Prologue />}
         {screen === 'character-select' && <CharacterSelectScreen />}
         {screen === 'name' && <NameInputScreen />}
         {screen === 'scene-00' && <Scene00 />}
@@ -47,6 +50,7 @@ export function App() {
         {screen === 'scene-08' && <Scene08 />}
         {screen === 'scene-09' && <Scene09 />}
         {screen === 'scene-10' && <Scene10 />}
+        {screen === 'level-11' && <Level11Escape />}
         {screen === 'level-complete' && <LevelComplete />}
         {screen === 'larder-stub' && <LarderStub />}
       </motion.div>
