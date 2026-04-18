@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  body {
+    font-family: 'Newsreader', ui-serif, Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Disable iOS tap highlight — we handle active states ourselves */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+@layer components {
+  /* The frame for every screen — locked to a phone viewport even on desktop. */
+  .grimhold-frame {
+    max-width: 420px;
+    margin-inline: auto;
+    min-height: 100dvh;
+    position: relative;
+    overflow: hidden;
+    background-color: #131411;
+    background-image:
+      radial-gradient(120% 90% at 12% 8%, rgba(0, 223, 193, 0.08) 0%, transparent 55%),
+      radial-gradient(110% 80% at 88% 92%, rgba(45, 27, 78, 0.45) 0%, transparent 60%),
+      radial-gradient(80% 60% at 50% 22%, rgba(255, 215, 153, 0.04) 0%, transparent 55%);
+  }
+
+  /* "Ink scratched into stone" heading — the house title treatment */
+  .ink-title {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #ffd799;
+    text-shadow:
+      0 0 18px rgba(255, 215, 153, 0.18),
+      0 1px 0 rgba(0, 0, 0, 0.6);
+  }
+
+  /* Primary CTA — teal inner glow, jagged corners, no plastic feel */
+  .btn-descend {
+    position: relative;
+    background: linear-gradient(180deg, #003a31 0%, #002b24 100%);
+    border: 0.5px solid rgba(0, 223, 193, 0.5);
+    color: #00dfc1;
+    font-family: 'Newsreader', serif;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 14px 28px;
+    border-radius: 4px;
+    box-shadow:
+      0 0 24px rgba(0, 223, 193, 0.18),
+      inset 0 0 22px rgba(0, 223, 193, 0.15);
+    text-shadow: 0 0 10px rgba(0, 223, 193, 0.6);
+    transition: transform 120ms ease, box-shadow 240ms ease;
+  }
+  .btn-descend:active {
+    transform: scale(0.98);
+  }
+  .btn-descend:hover {
+    box-shadow:
+      0 0 34px rgba(0, 223, 193, 0.28),
+      inset 0 0 26px rgba(0, 223, 193, 0.2);
+  }
+
+  /* Ghost-amber secondary */
+  .btn-ghost {
+    background: transparent;
+    border: 0.5px solid rgba(255, 215, 153, 0.3);
+    color: rgba(255, 215, 153, 0.8);
+    font-family: 'Newsreader', serif;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 12px 22px;
+    border-radius: 4px;
+  }
+
+  /* Chalk-on-stone recipe panel */
+  .chalk-panel {
+    background:
+      radial-gradient(120% 120% at 20% 0%, rgba(255, 215, 153, 0.06) 0%, transparent 45%),
+      linear-gradient(180deg, #1c1c19 0%, #131411 100%);
+    border: 0.5px solid rgba(148, 142, 153, 0.22);
+    box-shadow:
+      inset 0 0 22px rgba(0, 0, 0, 0.55),
+      0 2px 18px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Respect the reduced-motion preference — hard requirement in PRD §06 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

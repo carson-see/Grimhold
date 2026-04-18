@@ -1,0 +1,73 @@
+- generic [ref=e276]:
+  - img [ref=e278]
+  - generic [ref=e293]:
+    - generic [ref=e294]:
+      - generic [ref=e295]:
+        - img [ref=e296]
+        - img [ref=e298]
+        - img [ref=e300]
+        - img [ref=e302]
+        - img [ref=e304]
+      - heading "GRIMHOLD" [level=1] [ref=e306]
+      - generic [ref=e307]: Moves · 18
+    - generic [ref=e309]:
+      - generic [ref=e310]:
+        - generic [ref=e311]: Scratched into the wall
+        - generic [ref=e312]: Cell 4
+      - heading "The First Recipe" [level=2] [ref=e313]
+      - generic [ref=e314]:
+        - generic [ref=e315]:
+          - generic [ref=e316]: L
+          - generic [ref=e317]:
+            - generic [ref=e318]:
+              - img [ref=e319]
+              - generic [ref=e329]: Moonbloom
+              - generic [ref=e330]: ·
+            - generic [ref=e331]:
+              - img [ref=e332]
+              - generic [ref=e342]: Ashroot
+        - generic [ref=e343]:
+          - generic [ref=e344]: R
+          - generic [ref=e345]:
+            - generic [ref=e346]:
+              - img [ref=e347]
+              - generic [ref=e356]: Coldstone
+              - generic [ref=e357]: ·
+            - generic [ref=e358]:
+              - img [ref=e359]
+              - generic [ref=e367]: Emberpetal
+    - generic [ref=e369]:
+      - button "Left cauldron" [disabled] [ref=e371] [cursor=pointer]:
+        - img [ref=e373]
+        - paragraph [ref=e388]: Left
+      - button "Right cauldron" [disabled] [ref=e391] [cursor=pointer]:
+        - img [ref=e393]
+        - paragraph [ref=e408]: Right
+    - generic [ref=e411]:
+      - paragraph [ref=e412]: Tap an ingredient to lift it
+      - generic [ref=e413]:
+        - button "Moonbloom" [ref=e414] [cursor=pointer]:
+          - img [ref=e415]
+          - generic [ref=e425]: Moonbloom
+        - button "Moonbloom" [ref=e426] [cursor=pointer]:
+          - img [ref=e427]
+          - generic [ref=e437]: Moonbloom
+        - button "Ashroot" [ref=e438] [cursor=pointer]:
+          - img [ref=e439]
+          - generic [ref=e449]: Ashroot
+        - button "Ashroot" [ref=e450] [cursor=pointer]:
+          - img [ref=e451]
+          - generic [ref=e461]: Ashroot
+        - button "Coldstone" [ref=e462] [cursor=pointer]:
+          - img [ref=e463]
+          - generic [ref=e472]: Coldstone
+        - button "Emberpetal" [ref=e473] [cursor=pointer]:
+          - img [ref=e474]
+          - generic [ref=e482]: Emberpetal
+    - generic [ref=e483]:
+      - img [ref=e485]
+      - generic [ref=e495]:
+        - paragraph [ref=e496]: Mira
+        - paragraph [ref=e497]: Smudge is watching the grate.
+      - button "Quit to title" [ref=e498] [cursor=pointer]:
+        - img [ref=e499]

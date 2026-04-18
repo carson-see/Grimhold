@@ -1,0 +1,42 @@
+- generic [ref=e56]:
+  - img [ref=e58]
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - img [ref=e76]
+      - heading "GRIMHOLD" [level=1] [ref=e78]
+      - img [ref=e80]
+    - main [ref=e83]:
+      - generic [ref=e84]:
+        - heading "Choose Your Seeker" [level=2] [ref=e85]
+        - paragraph [ref=e86]: The descent demands a heavy toll. Who shall bear it?
+      - generic [ref=e88]:
+        - button "Void Weaver Witch Mira Ashveil · Cell 4" [pressed] [ref=e89] [cursor=pointer]:
+          - img [ref=e92]
+          - img [ref=e122]
+          - generic [ref=e124]:
+            - generic [ref=e125]: Void Weaver
+            - heading "Witch" [level=3] [ref=e126]
+            - paragraph [ref=e127]: Mira Ashveil · Cell 4
+        - button "Shadow Blade Rogue Sealed in Act Two" [disabled] [ref=e128]:
+          - img [ref=e130]
+          - img [ref=e136]
+          - generic [ref=e140]:
+            - generic [ref=e141]: Shadow Blade
+            - heading "Rogue" [level=3] [ref=e142]
+            - paragraph [ref=e143]: Sealed in Act Two
+        - button "Lore Keeper Scholar Sealed in Act Two" [disabled] [ref=e144]:
+          - img [ref=e146]
+          - img [ref=e152]
+          - generic [ref=e156]:
+            - generic [ref=e157]: Lore Keeper
+            - heading "Scholar" [level=3] [ref=e158]
+            - paragraph [ref=e159]: Sealed in Act Two
+        - button "Iron Warden Knight Sealed in Act Two" [disabled] [ref=e160]:
+          - img [ref=e162]
+          - img [ref=e168]
+          - generic [ref=e172]:
+            - generic [ref=e173]: Iron Warden
+            - heading "Knight" [level=3] [ref=e174]
+            - paragraph [ref=e175]: Sealed in Act Two
+      - paragraph [ref=e176]: Three paths are still sealed. The dungeon chooses when they open.
+    - button "Begin the Descent" [ref=e178] [cursor=pointer]

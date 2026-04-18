@@ -1,0 +1,5 @@
+- generic [ref=e225]:
+  - img [ref=e231]
+  - img [ref=e248]
+  - paragraph [ref=e276]: somewhere, water drips
+  - button "Skip" [active] [ref=e277] [cursor=pointer]

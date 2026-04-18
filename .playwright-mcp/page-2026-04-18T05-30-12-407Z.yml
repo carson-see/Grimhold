@@ -1,0 +1,79 @@
+- generic [ref=e222]:
+  - img [ref=e224]
+  - generic [ref=e239]:
+    - generic [ref=e240]:
+      - generic [ref=e241]:
+        - img [ref=e242]
+        - img [ref=e244]
+        - img [ref=e246]
+        - img [ref=e248]
+        - img [ref=e250]
+      - heading "GRIMHOLD" [level=1] [ref=e252]
+      - generic [ref=e253]: Moves · 2
+    - generic [ref=e255]:
+      - generic [ref=e256]:
+        - generic [ref=e257]: Scratched into the wall
+        - generic [ref=e258]: Cell 4
+      - heading "The First Recipe" [level=2] [ref=e259]
+      - generic [ref=e260]:
+        - generic [ref=e261]:
+          - generic [ref=e262]: L
+          - generic [ref=e263]:
+            - generic [ref=e264]:
+              - img [ref=e265]
+              - generic [ref=e275]: Moonbloom
+              - generic [ref=e276]: ·
+            - generic [ref=e277]:
+              - img [ref=e278]
+              - generic [ref=e288]: Moonbloom
+              - generic [ref=e289]: ·
+            - generic [ref=e290]:
+              - img [ref=e291]
+              - generic [ref=e301]: Ashroot
+              - generic [ref=e302]: ·
+            - generic [ref=e303]:
+              - img [ref=e304]
+              - generic [ref=e314]: Ashroot
+        - generic [ref=e315]:
+          - generic [ref=e316]: R
+          - generic [ref=e317]:
+            - generic [ref=e318]:
+              - img [ref=e319]
+              - generic [ref=e328]: Coldstone
+              - generic [ref=e329]: ·
+            - generic [ref=e330]:
+              - img [ref=e331]
+              - generic [ref=e339]: Emberpetal
+    - generic [ref=e341]:
+      - generic [ref=e342]:
+        - button "Left cauldron — tap to place chosen ingredient" [ref=e541] [cursor=pointer]:
+          - img [ref=e345]
+          - paragraph [ref=e360]: Left
+        - generic [ref=e361]:
+          - button "Return Moonbloom to the tray" [ref=e475] [cursor=pointer]:
+            - img [ref=e476]
+          - button "Return Moonbloom to the tray" [ref=e486] [cursor=pointer]:
+            - img [ref=e487]
+          - button "Return Ashroot to the tray" [ref=e497] [cursor=pointer]:
+            - img [ref=e498]
+          - button "Return Ashroot to the tray" [ref=e508] [cursor=pointer]:
+            - img [ref=e509]
+      - button "Right cauldron — tap to place chosen ingredient" [ref=e542] [cursor=pointer]:
+        - img [ref=e387]
+        - paragraph [ref=e403]: Right
+    - generic [ref=e425]:
+      - paragraph [ref=e426]: Chosen — tap a cauldron
+      - generic [ref=e427]:
+        - button "Coldstone" [ref=e520] [cursor=pointer]:
+          - img [ref=e521]
+          - generic [ref=e530]: Coldstone
+        - button "Emberpetal" [pressed] [ref=e531] [cursor=pointer]:
+          - img [ref=e532]
+          - generic [ref=e540]: Emberpetal
+    - generic [ref=e452]:
+      - img [ref=e454]
+      - generic [ref=e464]:
+        - paragraph [ref=e465]: Mira
+        - paragraph [ref=e466]: Smudge is watching the grate.
+      - button "Quit to title" [ref=e467] [cursor=pointer]:
+        - img [ref=e468]

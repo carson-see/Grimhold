@@ -1,0 +1,8 @@
+- generic [ref=e4]:
+  - img [ref=e6]
+  - generic [ref=e21]:
+    - generic [ref=e22]:
+      - heading "Grimhold" [level=1] [ref=e23]
+      - paragraph [ref=e24]: The recipe is not the product. You are.
+    - img [ref=e26]
+    - button "Begin the Descent" [ref=e54] [cursor=pointer]

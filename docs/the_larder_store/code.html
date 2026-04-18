@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Larder - Grimhold</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#ebddff",
+                      "surface-container-highest": "#353531",
+                      "on-tertiary-fixed-variant": "#4f3d72",
+                      "on-surface": "#e5e2dd",
+                      "surface-container-high": "#2a2a27",
+                      "primary-fixed": "#26fedc",
+                      "on-secondary-fixed": "#281900",
+                      "on-primary-fixed-variant": "#005144",
+                      "surface-container": "#20201d",
+                      "tertiary": "#d2bcfa",
+                      "outline-variant": "#49454e",
+                      "on-tertiary": "#38265a",
+                      "error": "#ffb4ab",
+                      "on-background": "#e5e2dd",
+                      "on-tertiary-container": "#9783bd",
+                      "on-surface-variant": "#cbc4d0",
+                      "inverse-primary": "#006b5b",
+                      "on-secondary-fixed-variant": "#604100",
+                      "inverse-on-surface": "#31302d",
+                      "on-primary-fixed": "#00201a",
+                      "tertiary-fixed-dim": "#d2bcfa",
+                      "secondary-fixed-dim": "#ffba38",
+                      "secondary": "#ffd799",
+                      "primary": "#00dfc1",
+                      "surface-container-lowest": "#0e0e0c",
+                      "primary-fixed-dim": "#00dfc1",
+                      "surface-dim": "#131411",
+                      "primary-container": "#002b24",
+                      "error-container": "#93000a",
+                      "on-secondary-container": "#6a4800",
+                      "on-error": "#690005",
+                      "secondary-fixed": "#ffdeac",
+                      "outline": "#948e99",
+                      "background": "#131411",
+                      "surface": "#131411",
+                      "inverse-surface": "#e5e2dd",
+                      "surface-bright": "#3a3936",
+                      "on-error-container": "#ffdad6",
+                      "surface-variant": "#353531",
+                      "on-secondary": "#432c00",
+                      "tertiary-container": "#2d1b4e",
+                      "on-tertiary-fixed": "#231043",
+                      "surface-tint": "#00dfc1",
+                      "surface-container-low": "#1c1c19",
+                      "secondary-container": "#feb300",
+                      "on-primary-container": "#009f89",
+                      "on-primary": "#00382f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {},
+              "fontFamily": {
+                      "headline": [
+                              "Newsreader"
+                      ],
+                      "body": [
+                              "Newsreader"
+                      ],
+                      "label": [
+                              "Newsreader"
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-[#131411] dark:bg-[#131411] shadow-[0_20px_50px_rgba(19,20,17,0.8)] docked full-width top-0 sticky z-40 bg-gradient-to-b from-[#2D1B4E] to-transparent">
+<div class="flex justify-between items-center w-full px-6 py-4">
+<button class="text-[#00DFC1] hover:text-[#FFD799] transition-colors duration-300 active:scale-95 transition-transform flex items-center justify-center p-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-newsreader tracking-tight leading-tight font-newsreader font-bold text-[#FFD799] text-xl text-center">The Larder</h1>
+<div class="flex items-center gap-4 text-on-surface font-label text-sm tracking-widest bg-surface-container-high px-3 py-1.5 rounded-sm border-[0.5px] border-outline/20">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-base" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+<span>1,250</span>
+</div>
+<div class="w-px h-4 bg-outline/20"></div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-tertiary text-base" style="font-variation-settings: 'FILL' 1;">diamond</span>
+<span>50</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="px-4 py-6 max-w-4xl mx-auto space-y-8">
+<!-- Tabs / Categories -->
+<nav class="flex gap-4 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-2">
+<button class="flex-none snap-start bg-primary-container/40 border border-primary/30 rounded-lg p-3 flex flex-col items-center justify-center min-w-[80px] gap-2 active:scale-95 transition-transform group relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none"></div>
+<span class="material-symbols-outlined text-primary text-3xl drop-shadow-[0_0_8px_#00DFC1]" style="font-variation-settings: 'FILL' 1;">science</span>
+</button>
+<button class="flex-none snap-start bg-surface-container-low border-[0.5px] border-outline/20 rounded-lg p-3 flex flex-col items-center justify-center min-w-[80px] gap-2 hover:bg-surface-container transition-colors group">
+<span class="material-symbols-outlined text-secondary text-3xl opacity-60 group-hover:opacity-100 transition-opacity" style="font-variation-settings: 'FILL' 1;">local_florist</span>
+</button>
+<button class="flex-none snap-start bg-surface-container-low border-[0.5px] border-outline/20 rounded-lg p-3 flex flex-col items-center justify-center min-w-[80px] gap-2 hover:bg-surface-container transition-colors group">
+<span class="material-symbols-outlined text-tertiary text-3xl opacity-60 group-hover:opacity-100 transition-opacity" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</button>
+<button class="flex-none snap-start bg-surface-container-low border-[0.5px] border-outline/20 rounded-lg p-3 flex flex-col items-center justify-center min-w-[80px] gap-2 hover:bg-surface-container transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant text-3xl opacity-60 group-hover:opacity-100 transition-opacity" style="font-variation-settings: 'FILL' 1;">category</span>
+</button>
+</nav>
+<!-- Item Grid -->
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+<!-- Item 1: Active/Buyable -->
+<article class="bg-surface-container-low rounded-md p-4 flex flex-col gap-3 relative group overflow-hidden border-[0.5px] border-outline-variant/30 hover:border-primary/50 transition-colors">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-surface-container-lowest pointer-events-none"></div>
+<div class="bg-surface-container-highest rounded-sm aspect-square flex items-center justify-center relative overflow-hidden mb-2 border-[0.5px] border-outline-variant/20">
+<div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent opacity-50"></div>
+<img alt="Bioluminescent teal potion flask in a dark rocky cave setting" class="w-full h-full object-cover mix-blend-screen opacity-80 group-hover:scale-105 transition-transform duration-500" data-alt="Close up of a glowing teal liquid in a rough glass vial sitting on dark damp dungeon stone, cinematic dark fantasy lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtz6whUpCWuon2kOrePvB1Q-jz9U9bB4rmPzLQDklnU-JF45ze2EFY07yeEtFp_cPysIlJWxOSasE8NYRowuGdl3opM4DWZDxCmunqFONCe1jhRwPP_aZjs6Skv4tgt-7vG7jgVCci7JESBQP_xtzrE1Kzee86huc8tBGWw913RRW89RHdslT3PsMb2gOj_EQLtyrRndZmXV7QS-BLH4dopL5qbyxcbLcm2aFFblr2d8fKsTiGQcAU98NM36X55hmVwPMRrcl9"/>
+</div>
+<div class="flex flex-col gap-1 z-10">
+<h3 class="font-headline text-on-surface font-semibold tracking-wide text-sm md:text-base leading-tight">Luminous Slime</h3>
+<p class="font-label text-xs text-on-surface-variant tracking-wider uppercase opacity-80">Reagent</p>
+</div>
+<button class="mt-auto bg-primary-container/80 border border-primary/30 rounded-sm py-2 px-3 flex items-center justify-between group-hover:bg-primary-container transition-colors w-full active:scale-95">
+<span class="font-label text-primary font-bold text-sm">Buy</span>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+<span class="font-label text-secondary font-semibold text-sm">150</span>
+</div>
+</button>
+</article>
+<!-- Item 2: Active/Buyable Premium -->
+<article class="bg-surface-container-low rounded-md p-4 flex flex-col gap-3 relative group overflow-hidden border-[0.5px] border-outline-variant/30 hover:border-secondary/50 transition-colors">
+<div class="absolute inset-0 bg-gradient-to-br from-secondary/5 via-transparent to-surface-container-lowest pointer-events-none"></div>
+<div class="bg-surface-container-highest rounded-sm aspect-square flex items-center justify-center relative overflow-hidden mb-2 border-[0.5px] border-outline-variant/20">
+<div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-secondary/20 via-transparent to-transparent opacity-50"></div>
+<img alt="Glowing amber crystal fragment" class="w-full h-full object-cover mix-blend-screen opacity-80 group-hover:scale-105 transition-transform duration-500" data-alt="Macro shot of a jagged glowing amber crystal shard on dark slate, warm cinematic rim lighting, rough texture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPY_5fuMS1fygFA5QcHHd0GGmc3ZK1qPWKvjyofQDmQkhlAYwJO9OPvnsXAGZJ0RyHjVKJWBwLCFZRPirxafqQcJZW8Xx1Cxu_Pk1SuWhw_EbeUT0SZcBjWB5m3gto9KVN4qcBchHWswEe97TCyAgzIhCDjflbT4wzZmSiB1rghdjQomkH_ZVmZxl84SXw6L2AQXnzayJzwD25wN59PjbY2Cu5L8sh-r_U_YoCfwqCnzj8O7ocS_sncUhVGYBANUHTMqVsTReg"/>
+</div>
+<div class="flex flex-col gap-1 z-10">
+<h3 class="font-headline text-secondary font-semibold tracking-wide text-sm md:text-base leading-tight drop-shadow-md">Amber Shard</h3>
+<p class="font-label text-xs text-secondary/70 tracking-wider uppercase">Rare Catalyst</p>
+</div>
+<button class="mt-auto bg-tertiary-container/80 border border-tertiary/30 rounded-sm py-2 px-3 flex items-center justify-between group-hover:bg-tertiary-container transition-colors w-full active:scale-95">
+<span class="font-label text-tertiary font-bold text-sm">Buy</span>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">diamond</span>
+<span class="font-label text-tertiary font-semibold text-sm">5</span>
+</div>
+</button>
+</article>
+<!-- Item 3: Locked/Unavailable -->
+<article class="bg-surface-container-lowest rounded-md p-4 flex flex-col gap-3 relative opacity-60 grayscale-[50%] border-[0.5px] border-outline-variant/10">
+<div class="bg-[#0a0a09] rounded-sm aspect-square flex items-center justify-center relative overflow-hidden mb-2">
+<span class="material-symbols-outlined text-outline text-4xl absolute z-10" style="font-variation-settings: 'FILL' 1;">lock</span>
+<img alt="Dark silhouetted jar" class="w-full h-full object-cover opacity-20 blur-sm" data-alt="Dark silhouette of a strange organic bulbous root on a black stone table, very low key lighting, mysterious" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsF8O4HiMOrIms63l5Ki0KXG28kXpL4PliBhTl7p3x_pa1OFzDTiv0zU8RJ9rFN7kd6p34PLw7VFdroEQ6eWcZZmtiwj2OgVjbVjFo-9dohrqB1Wp0THOiLhLua3W8evqqGmKTbxWyJ46Kx1iQHvWM7hE0fMIjYsjsLVwlvsMaL2CmnyCKUe-nW54Q7JBx97aAfQ61J_KzZ7T6EwdGSkrwHONQgJcA4oWE9Mw3JxeW2zJYNto9E2XgJL9Db945hQeoHnbAjiS2"/>
+</div>
+<div class="flex flex-col gap-1">
+<h3 class="font-headline text-on-surface-variant font-semibold tracking-wide text-sm md:text-base leading-tight">???</h3>
+<p class="font-label text-xs text-outline tracking-wider uppercase">Requires Lvl 5</p>
+</div>
+<div class="mt-auto bg-surface-container rounded-sm py-2 px-3 flex items-center justify-center border-[0.5px] border-outline/10">
+<span class="font-label text-outline text-sm">Locked</span>
+</div>
+</article>
+<!-- Item 4: Active/Buyable -->
+<article class="bg-surface-container-low rounded-md p-4 flex flex-col gap-3 relative group overflow-hidden border-[0.5px] border-outline-variant/30 hover:border-primary/50 transition-colors">
+<div class="bg-surface-container-highest rounded-sm aspect-square flex items-center justify-center relative overflow-hidden mb-2 border-[0.5px] border-outline-variant/20">
+<img alt="Dried dark leaves" class="w-full h-full object-cover mix-blend-luminosity opacity-70 group-hover:scale-105 transition-transform duration-500" data-alt="Bundle of dark dried twisted herbs tied with rough twine lying on cracked dungeon stone floor, moody overhead lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPnseUifCrYVWHkYKdHXJzsLFW_GGrcn5oxEWpZVaiT5bt0-ad-g2i3OtCBHdrmrteHfC6tDitFZHuj3G7gwWwjYfeZvvYK6oyGfFleH_1BR7YHRAEFsfQXJlql83HBniUy7HzCFzP5z-33zdV4heK01kB5rKXl9Ftc9h03kK3_Ju7YaMJIgBe9g0M0u_67-LdPvSluaQOvZE2MJO8YXpIDbHHxRWvg3hSFsdjFt4rPTZgRwMWrtQyVUAWrTdPFt2HukfZNaDr"/>
+</div>
+<div class="flex flex-col gap-1 z-10">
+<h3 class="font-headline text-on-surface font-semibold tracking-wide text-sm md:text-base leading-tight">Cave Moss</h3>
+<p class="font-label text-xs text-on-surface-variant tracking-wider uppercase opacity-80">Herb</p>
+</div>
+<button class="mt-auto bg-primary-container/80 border border-primary/30 rounded-sm py-2 px-3 flex items-center justify-between group-hover:bg-primary-container transition-colors w-full active:scale-95">
+<span class="font-label text-primary font-bold text-sm">Buy</span>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+<span class="font-label text-secondary font-semibold text-sm">45</span>
+</div>
+</button>
+</article>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-[#131411] dark:bg-[#131411] font-newsreader text-xs uppercase tracking-widest font-newsreader font-black text-[#FFD799] fixed bottom-0 w-full z-50 rounded-t-sm border-t border-[#E5E2DD]/10 shadow-[0_-10px_40px_rgba(0,0,0,0.9)] fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe h-20 md:hidden">
+<button class="flex flex-col items-center justify-center bg-[#00DFC1]/10 text-[#00DFC1] rounded-lg p-3 border-t-2 border-[#00DFC1] hover:bg-[#2D1B4E]/30 active:scale-90 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">storefront</span>
+<span class="sr-only">storefront</span>
+</button>
+<button class="flex flex-col items-center justify-center text-[#E5E2DD]/40 p-3 hover:bg-[#2D1B4E]/30 active:scale-90 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">inventory_2</span>
+<span class="sr-only">inventory_2</span>
+</button>
+<button class="flex flex-col items-center justify-center text-[#E5E2DD]/40 p-3 hover:bg-[#2D1B4E]/30 active:scale-90 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">map</span>
+<span class="sr-only">map</span>
+</button>
+<button class="flex flex-col items-center justify-center text-[#E5E2DD]/40 p-3 hover:bg-[#2D1B4E]/30 active:scale-90 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">menu_book</span>
+<span class="sr-only">Menu_book</span>
+</button>
+</nav>
+</body></html>

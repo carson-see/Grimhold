@@ -1,0 +1,8 @@
+- generic [ref=e609]:
+  - img [ref=e611]
+  - generic [ref=e626]:
+    - generic [ref=e627]:
+      - heading "Grimhold" [level=1] [ref=e628]
+      - paragraph [ref=e629]: The recipe is not the product. You are.
+    - img [ref=e631]
+    - button "Continue" [ref=e659] [cursor=pointer]

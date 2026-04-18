@@ -1,0 +1,40 @@
+- generic [ref=e545]:
+  - img [ref=e547]
+  - generic:
+    - generic:
+      - img
+    - generic:
+      - img
+  - generic [ref=e562]:
+    - generic [ref=e563]:
+      - generic [ref=e564]:
+        - paragraph [ref=e565]: Cell 4 · Sub-Ward One
+        - heading "The First Recipe" [level=2] [ref=e566]
+        - paragraph [ref=e567]: 18 moves · a violet wisp
+      - generic [ref=e568]:
+        - img [ref=e570]
+        - img [ref=e573]
+        - img [ref=e576]
+      - generic [ref=e578]:
+        - generic [ref=e579]:
+          - generic [ref=e580]:
+            - img [ref=e582]
+            - generic [ref=e586]: Coins
+          - generic [ref=e587]:
+            - paragraph [ref=e588]: "+200"
+            - paragraph [ref=e589]: total 200
+        - generic [ref=e590]:
+          - generic [ref=e591]:
+            - img [ref=e593]
+            - generic [ref=e596]: Gems · First Clear
+          - generic [ref=e597]:
+            - paragraph [ref=e598]: "+1"
+            - paragraph [ref=e599]: total 1
+      - generic [ref=e600]:
+        - paragraph [ref=e601]: Power stored
+        - paragraph [ref=e602]: +2 Extra Move Tokens
+        - paragraph [ref=e603]: For when the cauldrons outnumber you.
+      - generic [ref=e604]:
+        - button "Continue" [ref=e605] [cursor=pointer]
+        - button "Replay" [ref=e606] [cursor=pointer]
+    - paragraph [ref=e607]: Mira sat on the floor with the paper that had just slid in. She did not pick it up.

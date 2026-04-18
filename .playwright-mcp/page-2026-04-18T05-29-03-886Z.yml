@@ -1,0 +1,18 @@
+- generic [ref=e180]:
+  - img [ref=e182]
+  - generic [ref=e197]:
+    - banner [ref=e198]:
+      - button "Back to character select" [ref=e200] [cursor=pointer]:
+        - img [ref=e201]
+      - heading "GRIMHOLD" [level=1] [ref=e203]
+      - img [ref=e205]
+    - main [ref=e208]:
+      - generic [ref=e209]:
+        - heading "What will the stone remember you by?" [level=2] [ref=e210]
+        - paragraph [ref=e211]:
+          - text: The Architect's file lists you as Ashveil, M.
+          - text: It needn't be correct.
+      - generic [ref=e212]:
+        - generic [ref=e213]: Seeker's Name
+        - textbox "Seeker's Name" [ref=e215]: Mira
+    - button "Enter the Cell" [ref=e220] [cursor=pointer]
