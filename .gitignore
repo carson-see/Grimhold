@@ -12,3 +12,4 @@ dist-ssr
 .idea
 coverage
 .playwright
+tsconfig.tsbuildinfo
