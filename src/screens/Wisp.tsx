@@ -6,24 +6,50 @@ import { MiraSmudge } from '../assets/MiraSmudge';
 import { Wisp } from '../assets/Wisp';
 import { useGame } from '../game/store';
 import { playMusicBoxNote } from '../game/audio';
+import type { WispColor } from '../game/types';
 
-// The wisp rise. Level Document, Level 1: "a violet wisp rises from the
-// surface of the left cauldron... drifts toward a grate in the ceiling and
-// disappears through it. The player is not told what it is."
-// Held ~4.5s. After the grate flash, push to Scene 01.
+// The wisp rise — shared by every level. Color and narrative tag are
+// pulled from the completed recipe path. After the grate flash the player
+// moves to the level-specific close scene.
+
+const WISP_CAPTION: Record<WispColor, string> = {
+  violet: 'the dungeon did not celebrate — it got what it wanted',
+  'amber-threaded': 'something in the wisp is not the wall recipe',
+  'violet-amber': 'the cook stirred the air — and the brew noticed',
+};
+
+const FLASH_COLOR: Record<WispColor, string> = {
+  violet: 'bg-tertiary/30',
+  'amber-threaded': 'bg-secondary/30',
+  'violet-amber': 'bg-secondary/25',
+};
+
+// For each level id, the screen to show after the wisp rises.
+const POST_WISP_SCREEN = {
+  1: 'scene-01',
+  2: 'level-complete',
+  3: 'level-complete',
+} as const;
 
 export function WispScene() {
   const setScreen = useGame((s) => s.setScreen);
+  const level = useGame((s) => s.level);
+  const completedPathId = useGame((s) => s.completedPathId);
   const reduce = useReducedMotion();
   const advanceTimer = useRef<number | undefined>(undefined);
 
+  const recipe =
+    level.recipes.find((r) => r.id === completedPathId) ?? level.recipes[0];
+  const color = recipe.wispColor;
+
   useEffect(() => {
     playMusicBoxNote({ freq: 698.46, detuneCents: -16, durationMs: 2400, gain: 0.13 });
-    advanceTimer.current = window.setTimeout(() => setScreen('scene-01'), reduce ? 1500 : 3600);
+    const next = POST_WISP_SCREEN[level.id as 1 | 2 | 3] ?? 'level-complete';
+    advanceTimer.current = window.setTimeout(() => setScreen(next), reduce ? 1500 : 3600);
     return () => {
       if (advanceTimer.current) clearTimeout(advanceTimer.current);
     };
-  }, [setScreen, reduce]);
+  }, [setScreen, reduce, level.id]);
 
   return (
     <Frame>
@@ -50,25 +76,29 @@ export function WispScene() {
                 scale: [1, 0.95, 0.8, 0.55, 0.35],
               }
         }
-        transition={{ duration: reduce ? 1 : 3.2, times: reduce ? undefined : [0, 0.15, 0.7, 0.9, 1], ease: 'easeOut' }}
+        transition={{
+          duration: reduce ? 1 : 3.2,
+          times: reduce ? undefined : [0, 0.15, 0.7, 0.9, 1],
+          ease: 'easeOut',
+        }}
       >
-        <Wisp size={110} color="violet" />
+        <Wisp size={110} color={color} />
       </motion.div>
 
       <motion.div
-        className="absolute top-[6%] left-1/2 -translate-x-1/2 w-16 h-6 rounded-sm bg-tertiary/30 blur-[14px] z-10"
+        className={`absolute top-[6%] left-1/2 -translate-x-1/2 w-16 h-6 rounded-sm blur-[14px] z-10 ${FLASH_COLOR[color]}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.7, 0] }}
         transition={{ delay: reduce ? 0.6 : 2.1, duration: reduce ? 0.6 : 1.2 }}
       />
 
       <motion.p
-        className="absolute top-14 left-0 right-0 text-center text-on-surface-variant italic text-xs tracking-widest z-20"
+        className="absolute top-14 left-0 right-0 text-center text-on-surface-variant italic text-xs tracking-widest z-20 px-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.8, 0] }}
         transition={{ delay: reduce ? 0.4 : 2.4, duration: reduce ? 0.8 : 1.0 }}
       >
-        the dungeon did not celebrate — it got what it wanted
+        {WISP_CAPTION[color]}
       </motion.p>
     </Frame>
   );

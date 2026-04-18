@@ -5,21 +5,33 @@ import { InkDivider } from '../components/InkDivider';
 import { MiraSmudge } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 import { playMusicBoxNote } from '../game/audio';
+import { nextLevelId } from '../data/levels';
 
 export function TitleScreen() {
   const setScreen = useGame((s) => s.setScreen);
   const hasSeenOpening = useGame((s) => s.hasSeenOpening);
+  const highestLevelCleared = useGame((s) => s.highestLevelCleared);
+  const startLevel = useGame((s) => s.startLevel);
   const reduce = useReducedMotion();
 
   const begin = () => {
     playMusicBoxNote({ freq: 440, detuneCents: -14, durationMs: 1800, gain: 0.12 });
-    setScreen('character-select');
+    if (hasSeenOpening) {
+      // Returning player: drop straight into the next unplayed level, or
+      // replay Level 1 if no progress was saved.
+      const resume = nextLevelId(highestLevelCleared) ?? 1;
+      startLevel(resume);
+      setScreen('level');
+    } else {
+      setScreen('character-select');
+    }
   };
 
-  const fade = (delay: number) =>
-    reduce
-      ? { initial: { opacity: 1 }, animate: { opacity: 1 }, transition: { duration: 0 } }
-      : { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { delay, duration: 1.0 } };
+  const ctaLabel = hasSeenOpening
+    ? highestLevelCleared >= 3
+      ? 'Return to Grimhold'
+      : `Continue — Level ${Math.min(3, (nextLevelId(highestLevelCleared) ?? 1))}`
+    : 'Begin the Descent';
 
   return (
     <Frame>
@@ -48,6 +60,14 @@ export function TitleScreen() {
           >
             <InkDivider tone="primary" />
           </motion.div>
+          <motion.p
+            className="font-body italic text-[11px] text-on-surface-variant mt-3 tracking-wider"
+            initial={reduce ? { opacity: 1 } : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: reduce ? 0 : 1.6, duration: reduce ? 0 : 0.9 }}
+          >
+            Act One · Chapter One
+          </motion.p>
         </div>
 
         <motion.div
@@ -62,10 +82,12 @@ export function TitleScreen() {
         <motion.button
           className="btn-descend w-full max-w-xs mt-6"
           onClick={begin}
-          {...fade(1.6)}
-          aria-label={hasSeenOpening ? 'Continue' : 'Begin the Descent'}
+          initial={reduce ? { opacity: 1 } : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: reduce ? 0 : 1.6, duration: reduce ? 0 : 1.0 }}
+          aria-label={ctaLabel}
         >
-          {hasSeenOpening ? 'Continue' : 'Begin the Descent'}
+          {ctaLabel}
         </motion.button>
       </motion.div>
     </Frame>

@@ -16,6 +16,7 @@ const NOTE_DELAY_MS = 1900;
 export function Scene00() {
   const setScreen = useGame((s) => s.setScreen);
   const markOpeningSeen = useGame((s) => s.markOpeningSeen);
+  const startLevel = useGame((s) => s.startLevel);
   const hasSeenOpening = useGame((s) => s.hasSeenOpening);
   const reduce = useReducedMotion();
   const [canSkip, setCanSkip] = useState(false);
@@ -25,6 +26,7 @@ export function Scene00() {
     if (advancedRef.current) return;
     advancedRef.current = true;
     markOpeningSeen();
+    startLevel(1);
     setScreen('level');
   };
 

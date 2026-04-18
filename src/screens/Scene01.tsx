@@ -6,9 +6,9 @@ import { BottomCTA } from '../components/BottomCTA';
 import { MiraReaching } from '../assets/MiraSmudge';
 import { useGame } from '../game/store';
 
-// Scene 01 — "After the First Wisp"
-// Mira watches the grate; reaches up and falls six inches short; a folded
-// paper appears under the door; she does not pick it up. ~5–6 seconds.
+// Scene 01 — "After the First Wisp"  (only fires after Level 1)
+// Mira reaches up, falls six inches short; a folded paper appears under
+// the door; she does not pick it up. ~5–6 seconds.
 
 export function Scene01() {
   const setScreen = useGame((s) => s.setScreen);
@@ -62,6 +62,10 @@ export function Scene01() {
           transition={{ delay: reduce ? 0.4 : 3.2, duration: reduce ? 0.5 : 0.9 }}
         >
           Her fingers stopped six inches short of the grate.
+          <br />
+          <span className="text-[11px] text-on-surface-variant">
+            A folded paper slid in, and she did not pick it up.
+          </span>
         </motion.p>
       </div>
 

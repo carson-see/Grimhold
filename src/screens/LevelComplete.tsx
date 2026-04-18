@@ -5,39 +5,96 @@ import { CellBackdrop } from '../components/CellBackdrop';
 import { CoinIcon, GemIcon, StarIcon } from '../assets/Icons';
 import { Wisp } from '../assets/Wisp';
 import { useGame } from '../game/store';
+import type { LevelResult } from '../game/types';
+import { getLevel, nextLevelId } from '../data/levels';
 
-// Level Complete card. Stars + reward + continue. Quiet, not a fanfare —
-// per Level Document, Level 1: "No music sting. No fanfare."
+// Quiet — no fanfare. Per Level Document L1: "No music sting. No fanfare."
+// Stars + reward + continue. Continue advances to the level-appropriate
+// close scene (Scene 02 after L1, Scene 03 after L3, etc.).
+
+const WISP_LABEL: Record<LevelResult['wispColor'], string> = {
+  violet: 'a violet wisp',
+  'amber-threaded': 'a violet wisp threaded amber',
+  'violet-amber': 'a violet wisp, faintly amber-stirred',
+};
+
+const PATH_LABEL: Record<LevelResult['recipePathId'], string> = {
+  wall: 'The wall recipe',
+  slid: "The slid paper's recipe",
+  joint: 'The wall recipe',
+};
 
 export function LevelComplete() {
-  // Snapshot the result at mount. Continue/Replay reset the store via
-  // resetLevel() which nulls `lastResult` — without this snapshot, the
-  // defensive redirect would fire on the same tick and bounce to title.
-  const [result] = useState(() => useGame.getState().lastResult);
+  const reduce = useReducedMotion();
+
+  // Snapshot result at mount. For L1 the wisp-scene-01 chain calls
+  // finishLevel() before nav; for L2/L3 the wisp scene routes here
+  // directly, so we commit the result on first render if the store
+  // hasn't yet. `useState` initializer runs exactly once per mount.
+  const [result, setResult] = useState<LevelResult | null>(() => {
+    const s = useGame.getState();
+    if (s.lastResult) return s.lastResult;
+    if (s.completed && s.completedPathId) return s.finishLevel();
+    return null;
+  });
+
   const name = useGame((s) => s.name);
   const coins = useGame((s) => s.coins);
   const gems = useGame((s) => s.gems);
   const setScreen = useGame((s) => s.setScreen);
   const resetLevel = useGame((s) => s.resetLevel);
-  const reduce = useReducedMotion();
+  const startLevel = useGame((s) => s.startLevel);
+  const storeResult = useGame((s) => s.lastResult);
 
-  // True only when a user deep-links to this screen with no prior win.
+  // Keep our mount-time snapshot aligned if the store commits after the
+  // first render — otherwise the wisp-color line can be stale on first paint.
   useEffect(() => {
-    if (!result) setScreen('title');
-  }, [result, setScreen]);
+    if (!result && storeResult) setResult(storeResult);
+  }, [result, storeResult]);
+
+  // True only when a user deep-links to this screen without a completed level.
+  useEffect(() => {
+    if (!result && !storeResult) setScreen('title');
+  }, [result, storeResult, setScreen]);
 
   if (!result) return null;
 
-  const { stars, movesUsed } = result;
+  const { stars, movesUsed, levelId, wispColor, recipePathId } = result;
+  const level = getLevel(levelId);
+  const recipe = level.recipes.find((r) => r.id === recipePathId) ?? level.recipes[0];
+  const nextId = nextLevelId(levelId);
+
+  const continueLabel =
+    levelId === 1
+      ? 'Continue'            // → Scene 02 (two handwritings)
+      : nextId !== null
+        ? 'Continue'          // → Level 3
+        : 'The Larder';
 
   const handleContinue = () => {
-    setScreen('larder-stub');
-    resetLevel();
+    if (levelId === 1) {
+      setScreen('scene-02');
+    } else if (levelId === 2) {
+      startLevel(3);
+      setScreen('level');
+    } else if (levelId === 3) {
+      setScreen('scene-03');
+    } else {
+      setScreen('larder-stub');
+    }
   };
+
   const handleReplay = () => {
+    startLevel(levelId);
     setScreen('level');
-    resetLevel();
   };
+
+  const handleTitle = () => {
+    resetLevel();
+    setScreen('title');
+  };
+
+  const closingLine = level.closingLine.replace('{name}', name);
 
   return (
     <Frame>
@@ -45,11 +102,17 @@ export function LevelComplete() {
 
       {/* Ambient drifting wisps — CSS keyframe animation, no per-frame work */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute left-[12%] bottom-0 animate-wisp-rise" style={{ animationDelay: '0s' }}>
-          <Wisp size={50} color="violet" />
+        <div
+          className="absolute left-[12%] bottom-0 animate-wisp-rise"
+          style={{ animationDelay: '0s' }}
+        >
+          <Wisp size={50} color={wispColor} />
         </div>
-        <div className="absolute right-[16%] bottom-0 animate-wisp-rise" style={{ animationDelay: '3s' }}>
-          <Wisp size={60} color="amber-threaded" />
+        <div
+          className="absolute right-[16%] bottom-0 animate-wisp-rise"
+          style={{ animationDelay: '3s' }}
+        >
+          <Wisp size={60} color={wispColor} />
         </div>
       </div>
 
@@ -58,17 +121,15 @@ export function LevelComplete() {
           initial={reduce ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 20, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: reduce ? 0 : 0.9, ease: 'easeOut' }}
-          className="chalk-panel rounded-md px-6 py-8 w-full max-w-sm"
+          className="chalk-panel rounded-md px-6 py-7 w-full max-w-sm"
         >
-          <div className="text-center mb-4">
+          <div className="text-center mb-3">
             <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
-              Cell 4 · Sub-Ward One
+              {level.chapterLabel} · Level {levelId}
             </p>
-            <h2 className="font-headline italic text-2xl text-secondary mt-1">
-              The First Recipe
-            </h2>
+            <h2 className="font-headline italic text-2xl text-secondary mt-1">{level.title}</h2>
             <p className="font-body italic text-[11px] text-on-surface-variant mt-1">
-              {movesUsed} moves · a violet wisp
+              {movesUsed} moves · {WISP_LABEL[wispColor]}
             </p>
           </div>
 
@@ -85,35 +146,70 @@ export function LevelComplete() {
             ))}
           </div>
 
-          <div className="mt-4 space-y-2">
-            <RewardRow icon={<CoinIcon size={18} />} label="Coins" amount={`+${result.coins}`} total={coins} accent="secondary" />
-            <RewardRow icon={<GemIcon size={18} />} label="Gems · First Clear" amount={`+${result.gems}`} total={gems} accent="tertiary" />
+          {level.recipes.length > 1 && (
+            <p className="text-center font-body italic text-[11px] text-on-surface-variant mb-3">
+              {PATH_LABEL[recipePathId]} ·{' '}
+              {stars === 3 ? 'quick hands' : stars === 2 ? 'measured' : 'slow and sure'}
+            </p>
+          )}
+
+          <div className="mt-3 space-y-2">
+            <RewardRow
+              icon={<CoinIcon size={18} />}
+              label="Coins"
+              amount={`+${result.coins}`}
+              total={coins}
+              accent="secondary"
+            />
+            {result.gems > 0 && (
+              <RewardRow
+                icon={<GemIcon size={18} />}
+                label="Gems · First Clear"
+                amount={`+${result.gems}`}
+                total={gems}
+                accent="tertiary"
+              />
+            )}
           </div>
 
           <div className="mt-4 px-3 py-2 rounded-sm bg-surface-container/70 border-[0.5px] border-primary/20">
             <p className="font-label text-[9px] uppercase tracking-[0.22em] text-primary">Power stored</p>
-            <p className="font-body text-sm text-on-surface mt-0.5">+2 Extra Move Tokens</p>
+            <p className="font-body text-sm text-on-surface mt-0.5">{recipe.powerUpLabel}</p>
             <p className="font-body italic text-[10px] text-on-surface-variant mt-0.5">
-              For when the cauldrons outnumber you.
+              {recipe.powerUpDetail}
             </p>
           </div>
 
           <div className="space-y-2 mt-6">
-            <button className="btn-descend w-full" onClick={handleContinue}>Continue</button>
-            <button className="btn-ghost w-full" onClick={handleReplay}>Replay</button>
+            <button className="btn-descend w-full" onClick={handleContinue}>
+              {continueLabel}
+            </button>
+            <div className="flex gap-2">
+              <button className="btn-ghost flex-1" onClick={handleReplay} aria-label={`Replay level ${levelId}`}>
+                Replay
+              </button>
+              <button className="btn-ghost flex-1" onClick={handleTitle} aria-label="Return to title">
+                Title
+              </button>
+            </div>
           </div>
         </motion.div>
 
         <p className="font-body italic text-[11px] text-on-surface-variant mt-5 max-w-xs text-center">
-          {name} sat on the floor with the paper that had just slid in.
-          She did not pick it up.
+          {closingLine}
         </p>
       </div>
     </Frame>
   );
 }
 
-function RewardRow({ icon, label, amount, total, accent }: {
+function RewardRow({
+  icon,
+  label,
+  amount,
+  total,
+  accent,
+}: {
   icon: React.ReactNode;
   label: string;
   amount: string;
