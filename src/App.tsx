@@ -7,6 +7,9 @@ import { Scene00 } from './screens/Scene00';
 import { Scene01 } from './screens/Scene01';
 import { Scene02 } from './screens/Scene02';
 import { Scene03 } from './screens/Scene03';
+import { Scene04 } from './screens/Scene04';
+import { Scene05 } from './screens/Scene05';
+import { Scene06 } from './screens/Scene06';
 import { LevelScreen } from './screens/Level';
 import { WispScene } from './screens/Wisp';
 import { LevelComplete } from './screens/LevelComplete';
@@ -16,13 +19,13 @@ export function App() {
   const screen = useGame((s) => s.screen);
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       <motion.div
         key={screen}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.5, ease: 'easeInOut' }}
+        transition={{ duration: 0.35, ease: 'easeInOut' }}
       >
         {screen === 'title' && <TitleScreen />}
         {screen === 'character-select' && <CharacterSelectScreen />}
@@ -33,6 +36,9 @@ export function App() {
         {screen === 'scene-01' && <Scene01 />}
         {screen === 'scene-02' && <Scene02 />}
         {screen === 'scene-03' && <Scene03 />}
+        {screen === 'scene-04' && <Scene04 />}
+        {screen === 'scene-05' && <Scene05 />}
+        {screen === 'scene-06' && <Scene06 />}
         {screen === 'level-complete' && <LevelComplete />}
         {screen === 'larder-stub' && <LarderStub />}
       </motion.div>

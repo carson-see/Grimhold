@@ -1,42 +1,40 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Frame } from '../components/Frame';
 import { CellBackdrop } from '../components/CellBackdrop';
 import { CoinIcon, GemIcon, StarIcon } from '../assets/Icons';
 import { Wisp } from '../assets/Wisp';
 import { useGame } from '../game/store';
-import type { LevelResult } from '../game/types';
+import type { WispColor } from '../game/types';
 import { getLevel, nextLevelId } from '../data/levels';
 
-// Quiet — no fanfare. Per Level Document L1: "No music sting. No fanfare."
-// Stars + reward + continue. Continue advances to the level-appropriate
-// close scene (Scene 02 after L1, Scene 03 after L3, etc.).
-
-const WISP_LABEL: Record<LevelResult['wispColor'], string> = {
+const WISP_LABEL: Record<WispColor, string> = {
   violet: 'a violet wisp',
   'amber-threaded': 'a violet wisp threaded amber',
   'violet-amber': 'a violet wisp, faintly amber-stirred',
-};
-
-const PATH_LABEL: Record<LevelResult['recipePathId'], string> = {
-  wall: 'The wall recipe',
-  slid: "The slid paper's recipe",
-  joint: 'The wall recipe',
+  'violet-dark': 'a violet wisp with a darker thread',
+  'violet-strong': 'a violet wisp — brighter than before',
+  'downward-grey': 'a grey wisp that went down, not up',
 };
 
 export function LevelComplete() {
   const reduce = useReducedMotion();
+  const finishLevel = useGame((s) => s.finishLevel);
+  const storeResult = useGame((s) => s.lastResult);
+  const completed = useGame((s) => s.completed);
+  const completedPathId = useGame((s) => s.completedPathId);
 
-  // Snapshot result at mount. For L1 the wisp-scene-01 chain calls
-  // finishLevel() before nav; for L2/L3 the wisp scene routes here
-  // directly, so we commit the result on first render if the store
-  // hasn't yet. `useState` initializer runs exactly once per mount.
-  const [result, setResult] = useState<LevelResult | null>(() => {
-    const s = useGame.getState();
-    if (s.lastResult) return s.lastResult;
-    if (s.completed && s.completedPathId) return s.finishLevel();
-    return null;
-  });
+  // Commit once if arriving without a stored result (L2/L3 skip the Scene01
+  // → finishLevel handoff). `finishLevel` is idempotent in the store, but
+  // keeping a ref guard here avoids an extra setState.
+  const committedRef = useRef(false);
+  useEffect(() => {
+    if (storeResult || committedRef.current) return;
+    if (completed && completedPathId) {
+      committedRef.current = true;
+      finishLevel();
+    }
+  }, [storeResult, completed, completedPathId, finishLevel]);
 
   const name = useGame((s) => s.name);
   const coins = useGame((s) => s.coins);
@@ -44,43 +42,31 @@ export function LevelComplete() {
   const setScreen = useGame((s) => s.setScreen);
   const resetLevel = useGame((s) => s.resetLevel);
   const startLevel = useGame((s) => s.startLevel);
-  const storeResult = useGame((s) => s.lastResult);
 
-  // Keep our mount-time snapshot aligned if the store commits after the
-  // first render — otherwise the wisp-color line can be stale on first paint.
+  // Deep-link guard — bounce to title if someone lands here without a win.
   useEffect(() => {
-    if (!result && storeResult) setResult(storeResult);
-  }, [result, storeResult]);
+    if (!storeResult && !committedRef.current && !completed) setScreen('title');
+  }, [storeResult, completed, setScreen]);
 
-  // True only when a user deep-links to this screen without a completed level.
-  useEffect(() => {
-    if (!result && !storeResult) setScreen('title');
-  }, [result, storeResult, setScreen]);
-
+  const result = storeResult;
   if (!result) return null;
 
   const { stars, movesUsed, levelId, wispColor, recipePathId } = result;
   const level = getLevel(levelId);
   const recipe = level.recipes.find((r) => r.id === recipePathId) ?? level.recipes[0];
   const nextId = nextLevelId(levelId);
-
-  const continueLabel =
-    levelId === 1
-      ? 'Continue'            // → Scene 02 (two handwritings)
-      : nextId !== null
-        ? 'Continue'          // → Level 3
-        : 'The Larder';
+  const continueLabel = nextId !== null ? 'Continue' : 'The Larder';
+  const pathBlurb = level.recipes.length > 1 ? recipe.label : null;
 
   const handleContinue = () => {
-    if (levelId === 1) {
-      setScreen('scene-02');
-    } else if (levelId === 2) {
-      startLevel(3);
-      setScreen('level');
-    } else if (levelId === 3) {
-      setScreen('scene-03');
-    } else {
-      setScreen('larder-stub');
+    switch (levelId) {
+      case 1: setScreen('scene-02'); break;            // → Scene 02, then L2
+      case 2: startLevel(3); setScreen('level'); break; // → L3 directly
+      case 3: setScreen('scene-03'); break;            // → Scene 03, then L4
+      case 4: startLevel(5); setScreen('level'); break; // → L5 directly
+      case 5: startLevel(6); setScreen('level'); break; // → L6 directly
+      case 6: setScreen('larder-stub'); break;         // end of v0 arc
+      default: setScreen('larder-stub'); break;
     }
   };
 
@@ -102,16 +88,10 @@ export function LevelComplete() {
 
       {/* Ambient drifting wisps — CSS keyframe animation, no per-frame work */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div
-          className="absolute left-[12%] bottom-0 animate-wisp-rise"
-          style={{ animationDelay: '0s' }}
-        >
+        <div className="absolute left-[12%] bottom-0 animate-wisp-rise" style={{ animationDelay: '0s' }}>
           <Wisp size={50} color={wispColor} />
         </div>
-        <div
-          className="absolute right-[16%] bottom-0 animate-wisp-rise"
-          style={{ animationDelay: '3s' }}
-        >
+        <div className="absolute right-[16%] bottom-0 animate-wisp-rise" style={{ animationDelay: '3s' }}>
           <Wisp size={60} color={wispColor} />
         </div>
       </div>
@@ -146,10 +126,9 @@ export function LevelComplete() {
             ))}
           </div>
 
-          {level.recipes.length > 1 && (
+          {pathBlurb && (
             <p className="text-center font-body italic text-[11px] text-on-surface-variant mb-3">
-              {PATH_LABEL[recipePathId]} ·{' '}
-              {stars === 3 ? 'quick hands' : stars === 2 ? 'measured' : 'slow and sure'}
+              {pathBlurb} · {stars === 3 ? 'quick hands' : stars === 2 ? 'measured' : 'slow and sure'}
             </p>
           )}
 

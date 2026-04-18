@@ -12,6 +12,9 @@ export function LarderStub() {
   const coins = useGame((s) => s.coins);
   const gems = useGame((s) => s.gems);
   const setScreen = useGame((s) => s.setScreen);
+  const startLevel = useGame((s) => s.startLevel);
+  const highestLevelCleared = useGame((s) => s.highestLevelCleared);
+  const canReplayChapter = highestLevelCleared >= 1;
 
   return (
     <Frame>
@@ -81,7 +84,18 @@ export function LarderStub() {
           </div>
         </main>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background to-transparent">
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background to-transparent space-y-2">
+          {canReplayChapter && (
+            <button
+              className="btn-descend w-full"
+              onClick={() => {
+                startLevel(1);
+                setScreen('level');
+              }}
+            >
+              Replay the Chapter
+            </button>
+          )}
           <button className="btn-ghost w-full" onClick={() => setScreen('title')}>
             Return to Title
           </button>

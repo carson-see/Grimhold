@@ -3,13 +3,14 @@ import type { WispColor } from '../game/types';
 
 type Props = { className?: string; size?: number; color?: WispColor };
 
-// Four colors through the act — per Level Doc:
-//   violet         → standard wall-recipe clear (L1, L2 wall)
+// Six wisp colors through L1–L6 per Level Doc:
+//   violet         → standard wall-recipe clear (L1, L2 wall, L5 wall)
 //   amber-threaded → slid-recipe clear (L2 slid)
 //   violet-amber   → encounter-perturbed wisp (L3, Bessie present)
-//   amber          → reserved for pure human-made wisps; used as ambient
-//                    drifting in LevelComplete backgrounds
-const PALETTE: Record<WispColor | 'amber', { core: string; mid: string; halo: string; thread?: string }> = {
+//   violet-dark    → memory-vision wisp (L4 — grief-resonance darkening)
+//   violet-strong  → Architect-noticed wisp (L6 — cleaner output)
+//   downward-grey  → the wisp that doesn't rise (L5, Unknown in Left)
+const PALETTE: Record<WispColor, { core: string; mid: string; halo: string; thread?: string }> = {
   violet: { core: '#d2bcfa', mid: '#9783bd', halo: 'rgba(210,188,250,0.55)' },
   'amber-threaded': {
     core: '#d2bcfa',
@@ -23,12 +24,26 @@ const PALETTE: Record<WispColor | 'amber', { core: string; mid: string; halo: st
     halo: 'rgba(255,215,153,0.35)',
     thread: '#ffba38',
   },
-  amber: { core: '#ffd799', mid: '#ffba38', halo: 'rgba(255,215,153,0.55)' },
+  'violet-dark': {
+    core: '#b49bdb',
+    mid: '#5e4f7a',
+    halo: 'rgba(90,72,120,0.55)',
+    thread: '#2a1e3a',
+  },
+  'violet-strong': {
+    core: '#e7d6ff',
+    mid: '#a786d8',
+    halo: 'rgba(167,134,216,0.7)',
+  },
+  'downward-grey': {
+    core: '#babac0',
+    mid: '#6b6670',
+    halo: 'rgba(107,102,112,0.55)',
+  },
 };
 
 export function Wisp({ className, size = 120, color = 'violet' }: Props) {
-  const palette = PALETTE[color as keyof typeof PALETTE] ?? PALETTE.violet;
-  const { core, mid, halo, thread } = palette;
+  const { core, mid, halo, thread } = PALETTE[color];
   const allowMotion = useAllowMotion();
 
   return (

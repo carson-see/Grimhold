@@ -14,24 +14,30 @@ export function TitleScreen() {
   const startLevel = useGame((s) => s.startLevel);
   const reduce = useReducedMotion();
 
+  const resumeId = nextLevelId(highestLevelCleared);
+  const allCleared = hasSeenOpening && resumeId === null;
+
   const begin = () => {
     playMusicBoxNote({ freq: 440, detuneCents: -14, durationMs: 1800, gain: 0.12 });
-    if (hasSeenOpening) {
-      // Returning player: drop straight into the next unplayed level, or
-      // replay Level 1 if no progress was saved.
-      const resume = nextLevelId(highestLevelCleared) ?? 1;
-      startLevel(resume);
-      setScreen('level');
-    } else {
+    if (!hasSeenOpening) {
       setScreen('character-select');
+      return;
     }
+    if (allCleared) {
+      // Player has already reached the end of built content — send them to
+      // the Larder stub rather than silently restarting at Level 1.
+      setScreen('larder-stub');
+      return;
+    }
+    startLevel(resumeId ?? 1);
+    setScreen('level');
   };
 
-  const ctaLabel = hasSeenOpening
-    ? highestLevelCleared >= 3
-      ? 'Return to Grimhold'
-      : `Continue — Level ${Math.min(3, (nextLevelId(highestLevelCleared) ?? 1))}`
-    : 'Begin the Descent';
+  const ctaLabel = !hasSeenOpening
+    ? 'Begin the Descent'
+    : allCleared
+      ? 'Return to the Larder'
+      : `Continue — Level ${resumeId}`;
 
   return (
     <Frame>

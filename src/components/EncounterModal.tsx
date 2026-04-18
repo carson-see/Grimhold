@@ -1,38 +1,45 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { CoinIcon } from '../assets/Icons';
 import { useGame } from '../game/store';
 import type { EncounterChoice, EncounterChoiceId } from '../game/types';
+import { useCountdownDismiss } from './useCountdownDismiss';
 
-// Mid-level encounter — currently only Bessie Tallow in Level 3.
-// An 8-second countdown auto-selects the encounter's `defaultChoice` when
-// it expires. The PRD allows at most ONE numerical countdown on screen, so
-// this is the only visible timer while the modal is open.
+// Mid-level encounter — currently only Bessie Tallow in Level 3. The
+// countdown duration lives on the encounter config (`decisionSeconds`);
+// when it expires the encounter's `defaultChoice` is auto-selected. The
+// PRD allows at most ONE numerical countdown on screen, so this is the
+// only visible timer while the modal is open.
 
 export function EncounterModal() {
-  const encounter = useGame((s) => s.encounter);
-  const level = useGame((s) => s.level);
+  // Primitive selectors — the modal ticks at 10 Hz so we avoid pulling
+  // full objects and forcing comparison of their contents every frame.
+  const open = useGame((s) => s.encounter.open);
+  const deadline = useGame((s) => s.encounter.deadline);
+  const enc = useGame((s) => s.level.encounter);
   const coins = useGame((s) => s.coins);
   const resolveEncounter = useGame((s) => s.resolveEncounter);
   const reduce = useReducedMotion();
-  const [remainingMs, setRemainingMs] = useState<number>(() =>
-    encounter.deadline ? Math.max(0, encounter.deadline - Date.now()) : 0,
-  );
+  const onExpire = useCallback(() => {
+    if (enc) resolveEncounter(enc.defaultChoice);
+  }, [enc, resolveEncounter]);
+  const remainingMs = useCountdownDismiss(open ? deadline : null, onExpire);
 
+  // Escape picks the default choice for keyboard users — mirrors what the
+  // timer does on expiry. Always available while the modal is open.
   useEffect(() => {
-    if (!encounter.open || !encounter.deadline) return;
-    const tick = () => {
-      const left = Math.max(0, (encounter.deadline ?? 0) - Date.now());
-      setRemainingMs(left);
-      if (left <= 0 && level.encounter) resolveEncounter(level.encounter.defaultChoice);
+    if (!open || !enc) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        resolveEncounter(enc.defaultChoice);
+      }
     };
-    tick();
-    const id = window.setInterval(tick, 100);
-    return () => window.clearInterval(id);
-  }, [encounter.open, encounter.deadline, level.encounter, resolveEncounter]);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, enc, resolveEncounter]);
 
-  if (!encounter.open || !level.encounter) return null;
-  const enc = level.encounter;
+  if (!open || !enc) return null;
   const secondsLeft = Math.max(0, Math.ceil(remainingMs / 1000));
   const pctRemaining = Math.max(0, remainingMs / (enc.decisionSeconds * 1000));
 
@@ -83,7 +90,7 @@ export function EncounterModal() {
             <span
               className={[
                 'font-headline text-2xl leading-none font-bold tabular-nums',
-                secondsLeft <= 3 ? 'text-error' : 'text-secondary',
+                secondsLeft <= 4 ? 'text-error' : 'text-secondary',
               ].join(' ')}
               aria-live="polite"
             >
@@ -92,7 +99,7 @@ export function EncounterModal() {
           </div>
           <div className="h-1 rounded-sm bg-surface-container-lowest overflow-hidden">
             <motion.div
-              className={secondsLeft <= 3 ? 'h-full bg-error' : 'h-full bg-secondary'}
+              className={secondsLeft <= 4 ? 'h-full bg-error' : 'h-full bg-secondary'}
               initial={{ width: '100%' }}
               animate={{ width: `${pctRemaining * 100}%` }}
               transition={{ duration: 0.1, ease: 'linear' }}
