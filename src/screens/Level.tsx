@@ -4,13 +4,21 @@ import { Frame } from '../components/Frame';
 import { HudBar } from '../components/TopBar';
 import { CellBackdrop } from '../components/CellBackdrop';
 import { TutorialOverlay } from '../components/TutorialOverlay';
+import { EncounterModal } from '../components/EncounterModal';
 import { MiraBust } from '../assets/MiraSmudge';
 import { Cauldron } from '../assets/Cauldron';
 import { IngredientSvg, INGREDIENT_NAMES } from '../assets/Ingredients';
 import { MenuIcon } from '../assets/Icons';
-import type { CauldronId, IngredientId } from '../game/types';
+import type { CauldronId, IngredientId, RecipePath } from '../game/types';
 import { cauldronStatus, useGame } from '../game/store';
 import { playMusicBoxNote } from '../game/audio';
+
+const CAULDRON_LABEL: Record<CauldronId, string> = {
+  left: 'Left',
+  center: 'Centre',
+  right: 'Right',
+};
+const CAULDRON_INITIAL: Record<CauldronId, string> = { left: 'L', center: 'C', right: 'R' };
 
 export function LevelScreen() {
   const level = useGame((s) => s.level);
@@ -26,15 +34,19 @@ export function LevelScreen() {
   const name = useGame((s) => s.name);
   const tutorialSeen = useGame((s) => s.tutorialSeen);
   const markTutorialSeen = useGame((s) => s.markTutorialSeen);
+  const encounter = useGame((s) => s.encounter);
 
-  const [tutorialOpen, setTutorialOpen] = useState(!tutorialSeen);
-  const movesRemaining = level.moveLimit - movesUsed;
-  // v0 ships only Level 1, which has a single recipe path. L2/L3 multi-path
-  // UI (slid paper, joint highlight) lands when those screens are wired.
-  const recipe = level.recipes[0].placement;
+  // Tutorial only appears once, on Level 1, for the very first session.
+  const [tutorialOpen, setTutorialOpen] = useState(!tutorialSeen && level.id === 1);
+  const movesRemaining = Math.max(0, level.moveLimit - movesUsed);
   const [pulseCauldron, setPulseCauldron] = useState<CauldronId | null>(null);
   const pulseTimerRef = useRef<number | undefined>(undefined);
   const transitionTimerRef = useRef<number | undefined>(undefined);
+
+  const threeCauldrons = level.cauldrons.length >= 3;
+  const cauldronSize = threeCauldrons ? 80 : 104;
+  const wallRecipe = level.recipes.find((r) => r.handwriting === 'wall');
+  const slidRecipe = level.recipes.find((r) => r.handwriting === 'slid');
 
   const dismissTutorial = () => {
     setTutorialOpen(false);
@@ -45,7 +57,7 @@ export function LevelScreen() {
   useEffect(() => {
     if (!completed) return;
     playMusicBoxNote({ freq: 659.25, detuneCents: -12, durationMs: 1800, gain: 0.12 });
-    transitionTimerRef.current = window.setTimeout(() => setScreen('wisp'), 700);
+    transitionTimerRef.current = window.setTimeout(() => setScreen('wisp'), 900);
     return () => {
       if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
     };
@@ -56,7 +68,7 @@ export function LevelScreen() {
   }, []);
 
   const onCauldronTap = (cid: CauldronId) => {
-    if (!selectedIngredientId) return;
+    if (!selectedIngredientId || encounter.open) return;
     placeInCauldron(cid);
     setPulseCauldron(cid);
     if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
@@ -72,51 +84,43 @@ export function LevelScreen() {
       <div className="relative z-10 flex flex-col h-[100dvh]">
         <HudBar lives={3} movesRemaining={movesRemaining} />
 
-        <div className="mx-5 mt-1 mb-3">
-          <div className="chalk-panel rounded-sm px-4 py-3">
-            <div className="flex items-center justify-between">
-              <span className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant/70">
-                Scratched into the wall
-              </span>
-              <span className="font-body italic text-[10px] text-outline">Cell 4</span>
-            </div>
-            <h2 className="font-headline italic text-secondary text-lg mt-1 leading-tight">
-              {level.title}
-            </h2>
-            <div className="grid grid-cols-2 gap-2 mt-2 font-body text-xs text-on-surface/85">
-              <RecipeLine cauldron="left" items={recipe.left ?? []} />
-              <RecipeLine cauldron="right" items={recipe.right ?? []} />
-            </div>
-          </div>
+        <div className="mx-4 mt-1 mb-2 space-y-2">
+          {wallRecipe && (
+            <RecipeCard
+              recipe={wallRecipe}
+              cauldrons={level.cauldrons}
+              title={level.title}
+              chapter={level.chapterLabel}
+            />
+          )}
+          {slidRecipe && <RecipeCard recipe={slidRecipe} cauldrons={level.cauldrons} variant="slid" />}
         </div>
 
-        <div className="px-4 mt-2">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="px-3 mt-1">
+          <div className={`grid gap-2 ${threeCauldrons ? 'grid-cols-3' : 'grid-cols-2'}`}>
             {level.cauldrons.map((cid) => {
               const state = cauldronStatus(ingredients, cid, level);
               const placed = ingredients.filter((i) => i.placedIn === cid);
               const isPulsing = pulseCauldron === cid;
-              const tapDisabled = completed || !selectedIngredientId;
-              const cueing = !!selectedIngredientId && !completed && state !== 'correct';
-              const labelText = cid === 'left' ? 'Left' : 'Right';
+              const tapDisabled = completed || !selectedIngredientId || encounter.open;
+              const cueing = !!selectedIngredientId && !completed && !encounter.open && state !== 'correct';
+              const labelText = CAULDRON_LABEL[cid];
               return (
                 <div
                   key={cid}
                   className={[
-                    'relative rounded-md p-3 transition-all border-[0.5px]',
-                    selectedIngredientId
+                    'relative rounded-md p-2 transition-all border-[0.5px]',
+                    selectedIngredientId && !encounter.open
                       ? 'border-primary/40 bg-surface-container/60 shadow-[0_0_18px_rgba(0,223,193,0.15)]'
                       : 'border-outline/20 bg-surface-container-low/40',
                     state === 'correct' ? 'ring-1 ring-primary/30' : '',
+                    state === 'wrong' ? 'ring-1 ring-error/40' : '',
                   ].join(' ')}
                 >
-                  {/* Outer cauldron drop zone is a role="button" div so the
-                      tappable ingredient-removal buttons below can sit
-                      alongside it without nesting interactive elements.
-                      The store's placeInCauldron action gates on its own —
-                      we only use `tapDisabled` for the a11y attributes,
-                      not to short-circuit the click handler (which would
-                      drop fast successive taps before React re-renders). */}
+                  {/* role="button" so the tappable ingredient-removal buttons
+                      below can sit alongside the drop-zone without nesting
+                      interactive elements. The store's placeInCauldron gates
+                      itself — we only use `tapDisabled` for a11y attributes. */}
                   <div
                     role="button"
                     tabIndex={tapDisabled ? -1 : 0}
@@ -132,9 +136,9 @@ export function LevelScreen() {
                     className="flex flex-col items-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-sm"
                   >
                     <div className={`transition-transform ${isPulsing ? 'scale-105' : ''} ${cueing ? 'animate-cauldron-cue' : ''}`}>
-                      <Cauldron size={104} tint={state} glowing={selectedIngredientId !== null || state === 'correct'} />
+                      <Cauldron size={cauldronSize} tint={state} glowing={selectedIngredientId !== null || state === 'correct'} />
                     </div>
-                    <p className="font-label text-[10px] uppercase tracking-[0.22em] text-on-surface-variant mt-1">
+                    <p className="font-label text-[10px] uppercase tracking-[0.22em] text-on-surface-variant mt-0.5">
                       {labelText}
                     </p>
                   </div>
@@ -149,12 +153,12 @@ export function LevelScreen() {
                           exit={{ scale: 0.4, opacity: 0 }}
                           transition={{ duration: 0.35, ease: 'backOut' }}
                           onClick={() => removeFromCauldron(ing.id)}
-                          disabled={completed}
+                          disabled={completed || encounter.open}
                           className="w-11 h-11 inline-flex items-center justify-center rounded-sm hover:bg-surface-container transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                           aria-label={`Return ${INGREDIENT_NAMES[ing.kind]} to the tray`}
                           title={`${INGREDIENT_NAMES[ing.kind]} — tap to return`}
                         >
-                          <IngredientSvg id={ing.kind} size={28} noFilter />
+                          <IngredientSvg id={ing.kind} size={threeCauldrons ? 22 : 26} noFilter />
                         </motion.button>
                       ))}
                     </AnimatePresence>
@@ -166,17 +170,17 @@ export function LevelScreen() {
         </div>
 
         <div className="flex-1 mt-3 mx-4 mb-2 overflow-y-auto">
-          <div className="chalk-panel rounded-sm p-3 min-h-[160px]">
+          <div className="chalk-panel rounded-sm p-3 min-h-[150px]">
             <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant/70 mb-2">
               {selectedIngredientId ? 'Chosen — tap a cauldron' : 'Tap an ingredient to lift it'}
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <AnimatePresence>
                 {trayIngredients.map((ing, idx) => {
                   const isSelected = selectedIngredientId === ing.id;
                   // Pulse only the first untapped ingredient — the cue
                   // disappears once the player has selected anything.
-                  const isCueing = !selectedIngredientId && !completed && idx === 0;
+                  const isCueing = !selectedIngredientId && !completed && !encounter.open && idx === 0;
                   return (
                     <motion.button
                       key={ing.id}
@@ -185,19 +189,19 @@ export function LevelScreen() {
                       animate={{ opacity: 1, scale: isSelected ? 1.08 : 1, y: isSelected ? -4 : 0 }}
                       exit={{ opacity: 0, scale: 0.6 }}
                       onClick={() => selectIngredient(isSelected ? null : ing.id)}
-                      disabled={completed}
+                      disabled={completed || encounter.open}
                       aria-label={INGREDIENT_NAMES[ing.kind]}
                       aria-pressed={isSelected}
                       className={[
-                        'h-[72px] rounded-sm flex flex-col items-center justify-center gap-0.5 border-[0.5px]',
+                        'h-[64px] rounded-sm flex flex-col items-center justify-center gap-0.5 border-[0.5px]',
                         isSelected
                           ? 'bg-tertiary-container border-tertiary shadow-[0_0_14px_rgba(210,188,250,0.35)]'
                           : 'bg-surface-container-highest/70 border-outline/20 hover:border-primary/40',
                         isCueing ? 'animate-cue-pulse' : '',
                       ].join(' ')}
                     >
-                      <IngredientSvg id={ing.kind} size={40} />
-                      <span className="font-label text-[9px] uppercase tracking-wider text-on-surface/80">
+                      <IngredientSvg id={ing.kind} size={30} />
+                      <span className="font-label text-[9px] uppercase tracking-wider text-on-surface/80 truncate max-w-full px-0.5">
                         {INGREDIENT_NAMES[ing.kind]}
                       </span>
                     </motion.button>
@@ -205,7 +209,7 @@ export function LevelScreen() {
                 })}
               </AnimatePresence>
               {trayIngredients.length === 0 && (
-                <div className="col-span-3 text-center font-body italic text-outline text-xs py-6">
+                <div className="col-span-4 text-center font-body italic text-outline text-xs py-6">
                   The tray is empty. Watch the cauldrons.
                 </div>
               )}
@@ -220,14 +224,16 @@ export function LevelScreen() {
           <div className="flex-1 min-w-0">
             <p className="font-headline text-sm text-on-surface truncate">{name}</p>
             <p className="font-body italic text-[11px] text-on-surface-variant">
-              {completed ? 'Something is rising.' : 'Smudge is watching the grate.'}
+              {completed
+                ? 'Something is rising.'
+                : encounter.open
+                  ? 'Someone is at the door.'
+                  : 'Smudge is watching the grate.'}
             </p>
           </div>
           <button
             className="w-11 h-11 inline-flex items-center justify-center text-outline hover:text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-sm"
             onClick={() => {
-              // Quitting mid-puzzle: reset state so the next entry starts
-              // clean rather than resuming partly-filled cauldrons silently.
               setScreen('title');
               resetLevel();
             }}
@@ -240,23 +246,93 @@ export function LevelScreen() {
         <AnimatePresence>
           {tutorialOpen && <TutorialOverlay onDismiss={dismissTutorial} />}
         </AnimatePresence>
+
+        <AnimatePresence>
+          {encounter.open && level.encounter && <EncounterModal />}
+        </AnimatePresence>
       </div>
     </Frame>
   );
 }
 
-function RecipeLine({ cauldron, items }: { cauldron: CauldronId; items: IngredientId[] }) {
+function RecipeCard({
+  recipe,
+  cauldrons,
+  title,
+  chapter,
+  variant,
+}: {
+  recipe: RecipePath;
+  cauldrons: CauldronId[];
+  title?: string;
+  chapter?: string;
+  variant?: 'wall' | 'slid';
+}) {
+  const isSlid = variant === 'slid' || recipe.handwriting === 'slid';
   return (
-    <div className="flex items-center gap-2">
-      <span className="font-label text-[10px] uppercase tracking-[0.2em] text-outline">
-        {cauldron === 'left' ? 'L' : 'R'}
+    <div
+      className={[
+        'chalk-panel rounded-sm px-3 py-2',
+        isSlid
+          ? 'bg-[linear-gradient(180deg,rgba(58,50,34,0.5),rgba(22,20,16,0.65))] border-secondary/20'
+          : '',
+      ].join(' ')}
+    >
+      <div className="flex items-center justify-between">
+        <span
+          className={[
+            'font-label text-[10px] uppercase tracking-[0.22em]',
+            isSlid ? 'text-secondary/85' : 'text-on-surface-variant/70',
+          ].join(' ')}
+        >
+          {recipe.label}
+        </span>
+        {chapter && <span className="font-body italic text-[10px] text-outline">{chapter}</span>}
+      </div>
+      {title && (
+        <h2 className="font-headline italic text-secondary text-lg mt-0.5 leading-tight">{title}</h2>
+      )}
+      <div
+        className={`grid gap-1.5 mt-1 font-body text-xs text-on-surface/85 ${
+          cauldrons.length === 3 ? 'grid-cols-3' : 'grid-cols-2'
+        }`}
+      >
+        {cauldrons.map((cid) => (
+          <RecipeLine key={cid} cauldron={cid} items={recipe.placement[cid] ?? []} slid={isSlid} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecipeLine({
+  cauldron,
+  items,
+  slid,
+}: {
+  cauldron: CauldronId;
+  items: IngredientId[];
+  slid?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-1.5">
+      <span
+        className={[
+          'font-label text-[10px] uppercase tracking-[0.2em] shrink-0 mt-0.5',
+          slid ? 'text-secondary/70' : 'text-outline',
+        ].join(' ')}
+      >
+        {CAULDRON_INITIAL[cauldron]}
       </span>
-      <div className="flex items-center gap-1 flex-wrap">
+      <div className="flex items-center gap-0.5 flex-wrap">
+        {items.length === 0 && <span className="text-outline italic text-[10px]">—</span>}
         {items.map((ing, i) => (
-          <span key={i} className="inline-flex items-center gap-1 text-on-surface/80">
-            <IngredientSvg id={ing} size={18} noFilter />
-            <span className="text-[10px] tracking-wider">{INGREDIENT_NAMES[ing]}</span>
-            {i < items.length - 1 && <span className="text-outline">·</span>}
+          <span
+            key={`${cauldron}-${i}`}
+            className="inline-flex items-center"
+            title={INGREDIENT_NAMES[ing]}
+          >
+            <IngredientSvg id={ing} size={16} noFilter />
           </span>
         ))}
       </div>
